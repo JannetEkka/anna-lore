@@ -2,5 +2,17 @@
   "slug": "lore",
   "name": "Lore",
   "category": "developer-tools",
-  "tagline": "Who knows what in any public GitHub repo, with the pull requests to prove it."
+  "tagline": "Who knows what in any public GitHub repo, with the pull requests to prove it.",
+  "description": "Every project has people who know a part of the code inside out, and newcomers have no way to find them. CODEOWNERS files go stale, and the commit log shows who typed, not who reviewed or who answers questions about it.\n\nPaste any public GitHub repo (owner/repo or a URL). Lore reads its last 12 months of pull requests, reviews, issues and comments, works out who knows which directories, and answers from that history with a PR or issue linked for every claim.\n\nAsk: \"Who knows the query planner?\", \"Why was the retry logic changed?\", \"I'm new, where should I start?\" An agent picks queries over the history, shows each step it took, and answers with sources.\n\nExperts: every area of the code, the people who know it best, and the PRs behind each ranking.\n\nTriage an issue: pick an open issue and get related past issues and PRs, who knows that area (never the issue's author), and a drafted first reply. Nothing is posted anywhere.\n\nKnowledge risk: areas with recent work that only one active person knows well.\n\nHow the ranking works: a merged PR counts 1.0, a review 0.6, a comment 0.2, and work counts half as much every 180 days. Lore reads public data only, keeps GitHub logins and no emails or names, and caches a loaded repo in your Anna storage for a day. GitHub allows 60 calls an hour without a token; one repo takes about 40.",
+  "logo_file": "docs/logo.png",
+  "screenshots": [
+    "docs/screenshots/2-ask.png",
+    "docs/screenshots/3-experts.png",
+    "docs/screenshots/4-triage.png",
+    "docs/screenshots/5-triage-draft.png",
+    "docs/screenshots/1-start.png"
+  ],
+  "homepage_url": "https://github.com/JannetEkka/anna-lore",
+  "support_url": "https://github.com/JannetEkka/anna-lore/issues",
+  "privacy_url": "https://github.com/JannetEkka/anna-lore/blob/main/PRIVACY.md"
 }
