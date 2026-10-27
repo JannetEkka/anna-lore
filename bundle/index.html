@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lore</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="./icon.svg" alt="" width="28" height="28" />
+      <div>
+        <h1>Lore</h1>
+        <p class="tag">Who knows what in a GitHub repo, with the PRs to prove it</p>
+      </div>
+    </div>
+    <form id="repo-form" class="repo-form" autocomplete="off">
+      <input id="repo-input" type="text" placeholder="owner/repo or a GitHub URL" aria-label="GitHub repo" spellcheck="false" />
+      <button id="repo-load" type="submit">Load</button>
+    </form>
+  </header>
+
+  <section id="start" class="start">
+    <h2>Point Lore at any public GitHub repo</h2>
+    <p>Lore reads the last 12 months of pull requests, reviews, issues and comments, works out which people know which parts of the code, and answers questions from that history. Every answer cites the PRs and issues behind it.</p>
+    <div class="chips" id="examples"></div>
+    <div id="recent-wrap" hidden>
+      <h3>Loaded before</h3>
+      <div class="chips" id="recent"></div>
+    </div>
+  </section>
+
+  <section id="loading" class="loading" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <div>
+      <p id="loading-title">Reading the history…</p>
+      <ol id="loading-steps" class="steps"></ol>
+    </div>
+  </section>
+
+  <section id="error" class="error" role="alert" hidden></section>
+
+  <main id="app" hidden>
+    <div class="summary" id="summary"></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="ask" aria-selected="true">Ask</button>
+      <button role="tab" data-tab="experts">Experts</button>
+      <button role="tab" data-tab="triage">Triage an issue</button>
+      <button role="tab" data-tab="risk">Knowledge risk</button>
+    </nav>
+
+    <section class="panel" data-panel="ask">
+      <form id="ask-form" class="ask-form">
+        <textarea id="ask-input" rows="2" placeholder="Who knows the query planner? Why was X changed? I'm new, where should I start?"></textarea>
+        <button id="ask-go" type="submit">Ask</button>
+      </form>
+      <div class="chips" id="suggestions"></div>
+      <div id="ask-out"></div>
+    </section>
+
+    <section class="panel" data-panel="experts" hidden>
+      <p class="hint">Areas of the code by how much changed in them, and the people who know each best. Merged PRs count most, then reviews, then comments; recent work counts more.</p>
+      <div id="experts-out"></div>
+    </section>
+
+    <section class="panel" data-panel="triage" hidden>
+      <p class="hint">Pick an open issue: Lore finds related past work and who knows that part of the code, and drafts a first reply. Nothing is posted anywhere.</p>
+      <form id="triage-form" class="triage-form">
+        <select id="triage-select" aria-label="Open issue"></select>
+        <button id="triage-go" type="submit">Triage</button>
+      </form>
+      <div id="triage-out"></div>
+    </section>
+
+    <section class="panel" data-panel="risk" hidden>
+      <p class="hint">Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.</p>
+      <div id="risk-out"></div>
+    </section>
+  </main>
+
+  <footer class="foot">Reads public GitHub data only, from your browser. Keeps GitHub logins, never emails or names. Answers use your Anna model.</footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

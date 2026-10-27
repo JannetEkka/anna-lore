@@ -1,0 +1,34 @@
+{
+  "schema": 3,
+  "required_executas": [],
+  "storage": { "kv": true },
+  "system_prompt_addendum": "Lore shows who knows which parts of a public GitHub repo, from its last 12 months of pull requests, reviews, issues and comments, and answers questions with the PRs behind each answer. When the user mentions a GitHub repo (owner/repo or a github.com URL) or asks who knows a part of a codebase, who should review an issue, where a newcomer should start, or which code depends on one person, open Lore with open_app_view and payload {\"repo\": \"owner/repo\"}. If Lore is already open on that repo, pass {\"repo\": \"owner/repo\", \"question\": \"<the user's question>\"}. Lore reads public repos only.",
+  "tags": ["github", "open-source", "developer-tools", "code-ownership", "onboarding"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": ["https://api.github.com"]
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Lore",
+        "default": true,
+        "min_size": { "w": 420, "h": 480 },
+        "default_size": { "w": 980, "h": 720 },
+        "max_size": { "w": 1600, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "summary_template": "Lore: {repo}",
+        "icon": "icon.svg"
+      }
+    ],
+    "form_factors": ["desktop"],
+    "host_api": {
+      "llm": ["complete"],
+      "storage": ["get", "set"]
+    }
+  }
+}

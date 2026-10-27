@@ -1,0 +1,9 @@
+{
+  "name": "anna-lore",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/lore.test.mjs",
+    "test:ui": "node tests/ui.smoke.mjs"
+  }
+}
