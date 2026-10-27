@@ -74,8 +74,9 @@ function md(text) {
     const links = [];
     const hold = html => `\u0000${links.push(html) - 1}\u0000`;
     return esc(s)
-      .replace(/\[([\w.-]+\/[\w.-]+#\d+)\]/g, (_, id) => hold(itemLink(id)))
-      .replace(/(^|[\s(\[])#(\d+)\b/g, (_, pre, n) => pre + hold(itemLink(`${graph.repo}#${n}`)))
+      .replace(/([\w.-]+\/[\w.-]+#\d+)\b/g, (_, id) => hold(itemLink(id)))
+      .replace(/(^|[\s(\[,])#(\d+)\b/g, (_, pre, n) => pre + hold(itemLink(`${graph.repo}#${n}`)))
+      .replace(/\[((?:\u0000\d+\u0000|[\s,;])+)\]/g, "$1") // "[a, b]" around links -> "a, b"
       .replace(/(^|[\s(*_])@([A-Za-z0-9-]{1,39})\b/g, (_, pre, login) => pre + hold(person(login)))
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/`([^`]+)`/g, "<code>$1</code>")

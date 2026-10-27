@@ -6,7 +6,7 @@ function reply({ systemPrompt, messages }) {
     const n = messages.length;
     if (n === 1) return '{"tool": "find_areas", "args": {"text": "asyncio"}}';
     if (n === 3) return '{"tool": "who_knows", "args": {"area_ids": ["falkordb/asyncio"]}}';
-    return '{"answer": "**@gkorland** knows the async client best: they reviewed [FalkorDB/falkordb-py#236] and wrote #247.\\n\\n- @swilly22 is next."}';
+    return '{"answer": "**@gkorland** knows the async client best: they reviewed [FalkorDB/falkordb-py#236, FalkorDB/falkordb-py#198] and wrote #247.\\n\\n- @swilly22 is next."}';
   }
   return "Thanks for the report! This looks related to [FalkorDB/falkordb-py#307]. @gkorland knows this area best.";
 }
