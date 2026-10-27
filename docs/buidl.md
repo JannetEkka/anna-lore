@@ -22,7 +22,7 @@ GitHub, Developer Tools, Open Source, AI Agent
 
 - GitHub Repo: https://github.com/JannetEkka/anna-lore
 - Video: none yet (add if one is recorded)
-- Website: the Anna app link, once the app exists on Anna
+- Website: https://anna.partners/store/@jannetekka/lore
 
 ## Description (Markdown)
 
@@ -55,4 +55,6 @@ Anna App SDK (`llm.complete`, `storage`), manifest schema 3, GitHub REST API, pl
 
 ## Organizer question: link to your App on the Anna platform
 
-The app's Anna link, once it's created (fill in after `anna-app apps publish`).
+https://anna.partners/store/@jannetekka/lore
+
+Lore (app 733) was submitted for Anna App Review on Oct 27 and is pending, so this page goes live when it's approved. Until then the app shows as pending in the Developer Console.
