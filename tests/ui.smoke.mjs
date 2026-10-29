@@ -62,7 +62,7 @@ await page.click("#suggestions .chip");
 await page.waitForSelector(".answer:not(.pending)", { timeout: 20000 });
 const answer = await page.innerHTML(".answer");
 check(answer.includes('href="https://github.com/gkorland"'), "answer links people");
-check(answer.includes("/pull/236"), "answer links cited PRs");
+check(answer.includes("/pull/236") && answer.includes("/pull/198") && !answer.includes("["), "answer links grouped citations and drops the brackets");
 check((await page.$$(".trace li")).length === 2, "under the hood shows two tool calls");
 await page.screenshot({ path: path.join(out, "3-ask.png"), fullPage: true });
 
