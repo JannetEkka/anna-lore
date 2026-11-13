@@ -8,7 +8,7 @@ export function loadFixture() {
 }
 
 /** Returns (url) => {status, body, headers} for the endpoints fetchRepo calls. */
-export function githubRoutes(snap, { remaining = 60 } = {}) {
+export function githubRoutes(snap, { remaining = 60, reset = snap.fetched_at + 1800 } = {}) {
   const [owner, name] = snap.name.split("/");
   const base = `https://api.github.com/repos/${owner}/${name}`;
   const user = login => ({ login, type: "User" });
@@ -32,7 +32,7 @@ export function githubRoutes(snap, { remaining = 60 } = {}) {
     const u = new URL(url);
     const path = u.origin + u.pathname;
     left = Math.max(0, left - 1);
-    const headers = { "x-ratelimit-remaining": String(left), "x-ratelimit-limit": "60", "content-type": "application/json" };
+    const headers = { "x-ratelimit-remaining": String(left), "x-ratelimit-limit": "60", "x-ratelimit-reset": String(reset), "content-type": "application/json" };
     if (left === 0 && remaining < 60) return { status: 403, headers, body: { message: "API rate limit exceeded" } };
     let body;
     if (path === base) body = { full_name: snap.name, html_url: snap.url, description: snap.description, default_branch: "main", private: false };
