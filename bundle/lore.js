@@ -173,8 +173,10 @@ export async function fetchRepo(full, { gh, onProgress = () => {}, now = Date.no
   full = meta.full_name;
 
   const prs = [];
+  let prsSeen = 0, reachedStart = false;
   for await (const p of gh.pages(`/repos/${full}/pulls`, { state: "all", sort: "created", direction: "desc" }, budget.prPages)) {
-    if (p.created_at < sinceIso) break;
+    if (p.created_at < sinceIso) { reachedStart = true; break; }
+    prsSeen++;
     if (isBot(p.user)) continue;
     const { fixes, refs } = parseRefs(`${p.title}\n${p.body || ""}`);
     prs.push({
@@ -212,12 +214,14 @@ export async function fetchRepo(full, { gh, onProgress = () => {}, now = Date.no
   // Files per merged PR: one call each, newest first, within the budget.
   const merged = prs.filter(p => p.state === "merged").slice(0, budget.fileCalls);
   let done = 0;
+  let filesRead = 0;
   let stoppedEarly = false;
   await mapLimit(merged, 6, async p => {
     if (stoppedEarly) return;
     try {
       const files = await gh.get(`/repos/${full}/pulls/${p.number}/files`, { per_page: 100 });
       p.files = files.map(f => f.filename).filter(f => !isIgnored(f));
+      filesRead++;
     } catch (e) {
       if (e.kind === "rate") stoppedEarly = true; else throw e;
     }
@@ -245,6 +249,10 @@ export async function fetchRepo(full, { gh, onProgress = () => {}, now = Date.no
     since: Math.floor(since.getTime() / 1000), fetched_at: Math.floor(now / 1000),
     files_for: merged.length, merged_total: prs.filter(p => p.state === "merged").length,
     partial: stoppedEarly, prs, issues, comments, reviews, calls: gh.calls,
+    // What the conclusions rest on (see coverage()): PRs whose files were really read, whether the repo
+    // has more PRs in the window than the page budget, and when GitHub's hourly allowance resets.
+    files_read: filesRead, pr_cap_hit: !reachedStart && prsSeen >= budget.prPages * 100,
+    rate_reset: stoppedEarly ? gh.reset : null, rate_limit: gh.limit,
   };
 }
 
@@ -266,6 +274,9 @@ export function buildGraph(snap, now = Math.floor(Date.now() / 1000)) {
   const g = {
     repo, url: snap.url, description: snap.description, since: snap.since, fetchedAt: snap.fetched_at, now,
     partial: !!snap.partial, filesFor: snap.files_for, mergedTotal: snap.merged_total,
+    // Snapshots stored by v0.1.0 have no files_read: a complete one read files_for, a partial one is counted.
+    filesRead: snap.files_read ?? (snap.partial ? snap.prs.filter(p => p.files?.length).length : snap.files_for),
+    prCapHit: !!snap.pr_cap_hit, rateReset: snap.rate_reset || null, rateLimit: snap.rate_limit || 60,
     items: new Map(), people: new Map(), areas: new Map(), byNumber: new Map(),
     reviews: new Map(),   // prId -> Map(login -> {count, at})
     comments: new Map(),  // itemId -> Map(login -> {count, at})
@@ -373,6 +384,69 @@ export function tokens(text) {
 const iso = t => (t ? new Date(t * 1000).toISOString().slice(0, 10) : null);
 const brief = item => ({ id: item.id, kind: item.kind, title: item.title, state: item.state, url: item.url });
 
+const plural = (n, word) => `${n.toLocaleString("en-US")} ${word}${n === 1 ? "" : "s"}`;
+
+/** How much of the repo's history the rankings rest on. Who knows which area comes only from the files
+ *  of merged PRs, so the data is partial when GitHub's rate limit cut the load short, when files were
+ *  read for only the newest merged PRs (the free allowance), or when the repo has more PRs than were listed. */
+export function coverage(g) {
+  const rateLimited = !!g.partial;
+  const capped = !rateLimited && g.filesRead < g.mergedTotal;
+  const partial = rateLimited || capped || g.prCapHit;
+  const c = {
+    partial, rateLimited, capped, prCapHit: g.prCapHit, filesRead: g.filesRead, mergedTotal: g.mergedTotal,
+    resetAt: rateLimited ? g.rateReset : null, canBeComplete: g.mergedTotal <= g.filesFor && !g.prCapHit,
+    headline: "", detail: "",
+  };
+  if (!partial) return c;
+  const merged = `${g.prCapHit ? "at least " : ""}${plural(g.mergedTotal, "merged PR")}`;
+  c.headline = `files read for ${g.filesRead.toLocaleString("en-US")} of ${merged} in the last ${CONFIG.MONTHS} months`;
+  const why = [];
+  if (rateLimited) why.push("GitHub's rate limit stopped the rest.");
+  else if (capped) why.push(`Lore reads files for the ${g.filesFor} most recent merged PRs only, to stay within GitHub's free allowance of ${g.rateLimit} calls an hour.`);
+  if (g.prCapHit) why.push("The repo has more pull requests in that time than Lore lists, so older ones are missing too.");
+  c.detail = why.join(" ");
+  return c;
+}
+
+/** One paragraph for the model's prompt when the data is partial; "" when it is complete. */
+export function dataNote(g, { draft = false } = {}) {
+  const c = coverage(g);
+  if (!c.partial) return "";
+  return `The data is PARTIAL: ${c.headline}. ${c.detail}
+People and pull requests that were not fetched are invisible to you, so nothing here proves an absence.
+- Start any statement about who knows an area, bus factor or knowledge risk with "Based on the fetched data".
+- Never state as fact that only one person knows something, that nobody else does, or that an area has a bus factor of one. Say what the fetched data shows and that the full history may show more people.
+- ${draft
+    ? "In the reply, say the people named know this area well in the history Lore read; never call anyone the only one."
+    : `Say once, briefly, that the answer rests on partial data (${c.headline}).`}`;
+}
+
+const HEDGE_RE = /\b(fetched|partial|loaded|available|incomplete)\s+(data|history)\b|\bdata\s+(is|was)\s+(partial|incomplete)\b|\bmay\s+(show|be|have)\b|\bappears?\b/i;
+const ABSOLUTE_RES = [
+  /\bonly\s+(?:\*\*)?@?[\w-]+(?:\*\*)?\s+(?:really\s+|actively\s+|currently\s+)?(?:knows?|maintains?|understands?|works?\s+on|owns?|reviews?|touche[sd]|has)\b/i,
+  /\b(?:the\s+)?only\s+(?:one\s+)?(?:active\s+)?(?:person|maintainer|contributor|expert|developer|reviewer|one)\b/i,
+  /\b(?:nobody|no\s+one|no\s+other\s+\w+|none\s+of\s+the\s+others?)\s+(?:else\s+)?(?:knows?|maintains?|understands?|works?|has|is|reviews?|owns?)\b/i,
+  /\b(?:nobody|no\s+one)\s+else\b/i,
+  /\bsole(?:ly)?\s+(?:\w+\s+)?(?:maintainer|expert|owner|contributor|author|responsible|maintained|owned)\b/i,
+  /\bsingle\s+point\s+of\s+failure\b/i,
+  /\bbus\s+factor\s+(?:of|is|=|:)\s*(?:one|1)\b/i,
+  /\b(?:depends?|relies|rely|dependent)\s+(?:entirely|solely|completely|only)\s+on\b/i,
+];
+
+/** Sentences in a model's text that state an absence or a bus factor as fact, without saying the data is
+ *  partial. Returns [] when the data is complete or every such sentence is hedged. */
+export function absoluteClaims(g, text) {
+  if (!coverage(g).partial) return [];
+  const found = [];
+  for (const raw of String(text || "").split(/(?<=[.!?])\s+|\n+/)) {
+    const sentence = raw.replace(/^[\s>*-]+/, "").trim();
+    if (!sentence || HEDGE_RE.test(sentence)) continue;
+    if (ABSOLUTE_RES.some(re => re.test(sentence))) found.push(sentence.length > 160 ? sentence.slice(0, 157) + "…" : sentence);
+  }
+  return found;
+}
+
 export function projectOverview(g) {
   const items = [...g.items.values()];
   const created = items.map(i => i.created_at).filter(Boolean);
@@ -382,7 +456,7 @@ export function projectOverview(g) {
     prs: items.filter(i => i.kind === "PR").length, merged_prs: items.filter(i => i.state === "merged").length,
     issues: items.filter(i => i.kind === "Issue").length, areas: g.areas.size,
     history_from: iso(Math.min(...created)), history_to: iso(Math.max(...created)),
-    note: `Files are known for ${g.filesFor} of ${g.mergedTotal} merged PRs (the most recent ones).`,
+    note: coverage(g).partial ? `Partial data: ${coverage(g).headline}. ${coverage(g).detail}` : `Files are known for all ${g.mergedTotal} merged PRs.`,
   };
 }
 
@@ -669,7 +743,7 @@ Rules:
 - About an issue: get_item, then related and suggest_reviewers. You only draft; nothing is posted anywhere.
 - Where to start / first contribution: find_areas for the interest, good_first_issues with those ids, then who_knows.
 - If the history does not hold the answer, say so plainly and say what you looked for.
-- Keep answers short: a few sentences or a short list.`;
+- Keep answers short: a few sentences or a short list.${dataNote(g) ? "\n\n" + dataNote(g) : ""}`;
 }
 
 /** Pull the first JSON object out of a model reply (tolerates code fences and chatter). */
@@ -722,9 +796,11 @@ export async function runAgent(g, question, { complete, onEvent = () => {}, maxS
   const evidence = { items: new Map(), people: new Set() };
   const finish = text => {
     const ev = { items: [...evidence.items.values()], people: [...evidence.people] };
-    onEvent({ type: "answer", text, evidence: ev });
-    return { text, evidence: ev };
+    const caveats = absoluteClaims(g, text);
+    onEvent({ type: "answer", text, evidence: ev, caveats });
+    return { text, evidence: ev, caveats };
   };
+  const reminder = coverage(g).partial ? `\n\nReminder: the data is partial (${coverage(g).headline}). Say "based on the fetched data"; do not state absences or a bus factor as fact.` : "";
   for (let stepNo = 0; stepNo < maxSteps; stepNo++) {
     const reply = await complete({ systemPrompt: systemPrompt(g), messages });
     const step = parseStep(reply);
@@ -747,7 +823,7 @@ export async function runAgent(g, question, { complete, onEvent = () => {}, maxS
     let payload = JSON.stringify(result);
     if (payload.length > 7000) payload = payload.slice(0, 7000) + "…(truncated)";
     const last = stepNo === maxSteps - 2;
-    messages.push({ role: "user", content: `Result of ${step.tool}: ${payload}${last ? "\n\nThis was the last tool call. Reply with {\"answer\": ...} now." : ""}` });
+    messages.push({ role: "user", content: `Result of ${step.tool}: ${payload}${reminder}${last ? "\n\nThis was the last tool call. Reply with {\"answer\": ...} now." : ""}` });
   }
   onEvent({ type: "error", message: "Stopped after too many steps without an answer." });
   return null;
@@ -763,11 +839,12 @@ export async function triage(g, issueRef, { complete }) {
   const prompt = `Draft a short, friendly first reply to this GitHub issue, as a maintainer would write it.
 Point to the related past issues/PRs that matter, as [${g.repo}#n], and say who knows this area best as @login with why.
 Do not promise fixes or dates. Do not invent anything not in the data. Under 120 words. Plain markdown.
-
+${dataNote(g) ? "\n" + dataNote(g, { draft: true }) + "\n" : ""}
 Issue: ${JSON.stringify(getItem(g, id))}
 Related: ${JSON.stringify(rel.related)}
 Areas: ${JSON.stringify(rel.areas)}
 People who know these areas: ${JSON.stringify(rev.reviewers.map(r => ({ login: r.login, score: r.score, evidence: r.evidence })))}`;
   const draft = await complete({ systemPrompt: `You help maintainers of ${g.repo} triage issues. You only draft; nothing is posted.`, messages: [{ role: "user", content: prompt }] });
-  return { issue: getItem(g, id), related: rel.related, areas: rel.areas, reviewers: rev.reviewers, draft: String(draft || "").trim() };
+  const text = String(draft || "").trim();
+  return { issue: getItem(g, id), related: rel.related, areas: rel.areas, reviewers: rev.reviewers, draft: text, caveats: absoluteClaims(g, text) };
 }

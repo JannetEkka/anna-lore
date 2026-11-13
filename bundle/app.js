@@ -141,6 +141,8 @@ async function loadRepo(input, { refresh = false } = {}) {
   steps.innerHTML = "";
   try {
     let snap = refresh ? null : await load(snapKey(repo));
+    // A copy cut short by GitHub's rate limit is only kept until the limit has reset.
+    if (snap?.partial && Date.now() / 1000 > (snap.rate_reset || snap.fetched_at + 3600)) snap = null;
     if (snap && Date.now() / 1000 - snap.fetched_at < FRESH_SECONDS) {
       steps.innerHTML = `<li>Using the copy loaded ${ago(snap.fetched_at)}.</li>`;
     } else {
@@ -190,10 +192,12 @@ function renderRepo(snap) {
       <span><b>${o.prs}</b> PRs</span><span><b>${o.issues}</b> issues</span><span><b>${o.areas}</b> areas</span>
       <span class="muted">${esc(o.history_from)} → ${esc(o.history_to)} · loaded ${ago(snap.fetched_at)}</span>
       <button type="button" class="link" id="refresh">Refresh</button>
-    </div>
-    ${graph.filesFor < graph.mergedTotal ? `<div class="muted small">Files are read for the ${graph.filesFor} most recent of ${graph.mergedTotal} merged PRs, to stay within GitHub's free allowance.</div>` : ""}
-    ${graph.partial ? `<div class="warn small">GitHub's hourly allowance ran out while loading, so this history is partial.</div>` : ""}`;
+    </div>${partialBanner()}`;
+  $("#summary").classList.toggle("has-partial", L.coverage(graph).partial);
   $("#refresh").addEventListener("click", () => loadRepo(graph.repo, { refresh: true }));
+  $("#risk-hint").textContent = L.coverage(graph).partial
+    ? "Areas with at least 3 merged PRs in the last six months that, in the data Lore fetched, at most one active person knows well. People whose work wasn't fetched don't show up here."
+    : "Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.";
   $("#ask-out").innerHTML = "";
   $("#triage-out").innerHTML = "";
   chips($("#suggestions"), SUGGESTIONS, q => { $("#ask-input").value = q; ask(q); });
@@ -215,15 +219,47 @@ function evidenceList(ev) {
   return `<ul class="evidence">${ev.map(e => `<li><span class="role">${esc(e.role)}</span> ${itemLink(e.id)} ${esc(e.title)} <span class="muted">${esc(e.at || "")}</span></li>`).join("")}</ul>`;
 }
 
+/** "14:05", or "14:05 on Nov 14" when that isn't today. Local time. */
+function clock(t) {
+  const d = new Date(t * 1000);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toDateString() === new Date().toDateString() ? time : `${time} on ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+}
+
+/** The banner every result view carries while the data is partial: how much was read, why, and what to do. */
+function partialBanner(lead = "") {
+  const c = L.coverage(graph);
+  if (!c.partial) return "";
+  let next = "";
+  if (c.rateLimited) {
+    const waiting = c.resetAt && c.resetAt > Date.now() / 1000;
+    next = waiting
+      ? ` GitHub's limit resets at ${esc(clock(c.resetAt))}; press Refresh after that for a ${c.canBeComplete ? "complete" : "fuller"} run.`
+      : ` GitHub's limit has reset; press Refresh for a ${c.canBeComplete ? "complete" : "fuller"} run.`;
+  }
+  return `<div class="partial-banner" role="note"><span class="partial-icon" aria-hidden="true">!</span>
+    <div><strong>Based on partial data:</strong> ${esc(c.headline)}. ${esc(c.detail)}${next}${lead ? " " + esc(lead) : ""}</div></div>`;
+}
+const partialBadge = () => (L.coverage(graph).partial ? ' <span class="partial-badge" title="Lore read only part of this repo\'s history">partial data</span>' : "");
+
+/** A note above a model-written text that states an absence as fact while the data is partial. */
+function caveatNote(caveats) {
+  if (!caveats?.length) return "";
+  return `<div class="caveat" role="note"><strong>Read with care.</strong> This text states something as fact that partial data can't prove:
+    <ul>${caveats.slice(0, 3).map(c => `<li>“${esc(c)}”</li>`).join("")}</ul>People whose work Lore didn't fetch may know this code too.</div>`;
+}
+
 function renderExperts() {
   const rows = L.areaDirectory(graph);
-  $("#experts-out").innerHTML = rows.length ? rows.map(a => `
+  const partial = L.coverage(graph).partial;
+  $("#experts-out").classList.toggle("partial-list", partial);
+  $("#experts-out").innerHTML = partialBanner("The rankings below count only the pull requests Lore read.") + (rows.length ? rows.map(a => `
     <details class="area">
-      <summary><code>${esc(a.area)}</code> <span class="muted">${a.prs} PRs · ${a.files} files</span>
+      <summary><code>${esc(a.area)}</code> <span class="muted">${a.prs} PRs · ${a.files} files</span>${partialBadge()}
         <span class="people">${a.top.map(t => person(t.login) + (t.active ? "" : ' <span class="muted">(inactive)</span>')).join(", ")}</span></summary>
       <div class="area-body" data-area="${esc(a.area)}"></div>
     </details>`).join("")
-    : `<p class="muted">No merged PRs with known files in the loaded history, so there's nothing to rank yet.</p>`;
+    : `<p class="muted">No merged PRs with known files in the loaded history, so there's nothing to rank yet.</p>`);
   for (const d of document.querySelectorAll("#experts-out details")) {
     d.addEventListener("toggle", () => {
       const body = d.querySelector(".area-body");
@@ -238,9 +274,21 @@ function renderExperts() {
 
 function renderRisk() {
   const rows = L.knowledgeRisk(graph);
-  $("#risk-out").innerHTML = rows.length
-    ? `<ul class="risk">${rows.map(r => `<li><code>${esc(r.area)}</code> · ${r.recent_prs} merged PRs in six months · ${r.knowers.length ? "only " + person(r.knowers[0]) + " knows it well" : "<strong>no active person</strong> knows it well"}</li>`).join("")}</ul>`
-    : `<p class="muted">No area with recent work depends on a single active person. Good news.</p>`;
+  const partial = L.coverage(graph).partial;
+  const verdict = r => {
+    if (partial) {
+      return r.knowers.length
+        ? `Based on fetched data, only ${person(r.knowers[0])} knows it well`
+        : "Based on fetched data, no active person knows it well";
+    }
+    return r.knowers.length ? "only " + person(r.knowers[0]) + " knows it well" : "<strong>no active person</strong> knows it well";
+  };
+  $("#risk-out").classList.toggle("partial-list", partial);
+  $("#risk-out").innerHTML = partialBanner("An area listed here may have more people who know it than Lore has seen, so don't read this as the project's bus factor.") + (rows.length
+    ? `<ul class="risk">${rows.map(r => `<li><code>${esc(r.area)}</code> · ${r.recent_prs} merged PRs ${partial ? "fetched from the last" : "in"} six months · ${verdict(r)}${partialBadge()}</li>`).join("")}</ul>`
+    : partial
+      ? `<p class="muted">In the fetched data, no area with recent work depends on a single active person. With partial data, that isn't a clean bill of health.</p>`
+      : `<p class="muted">No area with recent work depends on a single active person. Good news.</p>`);
 }
 
 function renderTriageOptions() {
@@ -282,6 +330,7 @@ async function ask(question) {
       answer.innerHTML = `<p class="warn">Lore couldn't finish this one. Try asking it more simply.</p>`;
     } else {
       out.querySelector(".hood").open = false;
+      answer.insertAdjacentHTML("beforebegin", partialBanner("This answer was written from that data.") + caveatNote(res.caveats));
       answer.innerHTML = md(res.text) + (res.evidence.items.length
         ? `<div class="sources"><span class="muted">Looked at:</span> ${res.evidence.items.slice(0, 12).map(i => itemLink(i.id)).join(" ")}</div>` : "");
     }
@@ -304,16 +353,16 @@ async function runTriage(id) {
   try {
     const r = await L.triage(graph, id, { complete });
     if (r.error) { out.innerHTML = `<p class="warn">${esc(r.error)}</p>`; return; }
-    out.innerHTML = `
+    out.innerHTML = `${partialBanner("The people and related work below come from that data.")}
       <h3>${itemLink(r.issue.id)} ${esc(r.issue.title)}</h3>
       <div class="grid">
         <div><h4>Areas it's about</h4>${r.areas.length ? `<ul>${r.areas.map(a => `<li><code>${esc(a.area)}</code> <span class="muted">${esc(a.reasons.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">No area stands out.</p>`}</div>
-        <div><h4>Who knows it</h4>${r.reviewers.length ? r.reviewers.map(p => `<div class="expert">${person(p.login)} <span class="muted">score ${p.score}</span>${evidenceList(p.evidence)}</div>`).join("") : `<p class="muted">Nobody active stands out.</p>`}</div>
+        <div><h4>Who knows it${partialBadge()}</h4>${r.reviewers.length ? r.reviewers.map(p => `<div class="expert">${person(p.login)} <span class="muted">score ${p.score}</span>${evidenceList(p.evidence)}</div>`).join("") : `<p class="muted">Nobody active stands out.</p>`}</div>
       </div>
       <h4>Related past work</h4>
       ${r.related.length ? `<ul>${r.related.map(x => `<li>${itemLink(x.id)} ${esc(x.title)} <span class="muted">${esc(x.why.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">Nothing related in the last 12 months.</p>`}
       <h4>Drafted reply <span class="muted small">(not posted)</span></h4>
-      <div class="draft">${md(r.draft)}</div>
+      ${caveatNote(r.caveats)}<div class="draft">${md(r.draft)}</div>
       <button type="button" class="link" id="copy-draft">Copy draft</button>`;
     $("#copy-draft").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(r.draft); $("#copy-draft").textContent = "Copied"; } catch { $("#copy-draft").textContent = "Select the text to copy it"; }

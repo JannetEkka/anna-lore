@@ -4,6 +4,11 @@ const calls = (window.__annaCalls = []);
 function reply({ systemPrompt, messages }) {
   if (/You work in steps/.test(systemPrompt || "")) {
     const n = messages.length;
+    if (window.__mockOverstates) {
+      // A model that ignores the partial-data instructions, to exercise the check on its answer.
+      if (n === 1) return '{"tool": "knowledge_risk", "args": {}}';
+      return '{"answer": "Only @gkorland knows `falkordb/asyncio` well, so it has a bus factor of one [FalkorDB/falkordb-py#236].\\n\\nBased on the fetched data, @swilly22 has reviewed there too."}';
+    }
     if (n === 1) return '{"tool": "find_areas", "args": {"text": "asyncio"}}';
     if (n === 3) return '{"tool": "who_knows", "args": {"area_ids": ["falkordb/asyncio"]}}';
     return '{"answer": "**@gkorland** knows the async client best: they reviewed [FalkorDB/falkordb-py#236, FalkorDB/falkordb-py#198] and wrote #247.\\n\\n- @swilly22 is next."}';
