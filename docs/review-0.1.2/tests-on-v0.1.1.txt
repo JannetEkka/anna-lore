@@ -1,0 +1,993 @@
+TAP version 13
+# Subtest: finding 1: on a complete load, an answer calling someone the only person who understands the repo is caught
+not ok 1 - finding 1: on a complete load, an answer calling someone the only person who understands the repo is caught
+  ---
+  duration_ms: 4.658857
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:30:1'
+  failureType: 'testCodeFailure'
+  error: 'the overclaiming answer is not shown as it was written'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: '@gkorland is the only person who broadly understands the repository [FalkorDB/falkordb-py#307].'
+  actual: '@gkorland is the only person who broadly understands the repository [FalkorDB/falkordb-py#307].'
+  operator: 'notStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:45:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: finding 1: the model is told on every load to describe activity, not understanding
+not ok 2 - finding 1: the model is told on every load to describe activity, not understanding
+  ---
+  duration_ms: 0.872425
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:49:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /public GitHub activity/i. Input:
+    
+    'You are Lore. You know the GitHub repo FalkorDB/falkordb-py through a graph of its public history since 2025-11-01:\n' +
+      'people (GitHub logins), pull requests, reviews, issues, comments, and areas of the code (directories).\n' +
+      '\n' +
+      'You work in steps. Each reply must be ONE JSON object and nothing else:\n' +
+      '- to use a tool: {"tool": "<name>", "args": {...}}\n' +
+      '- to answer:     {"answer": "<markdown>"}\n' +
+      '\n' +
+      'Tools:\n' +
+      '- project_overview {}: The repo as a whole: people, active people, PRs, issues, areas, time span.\n' +
+      '- find_areas {"text": string}: Areas of the code (directories) whose path or files mention the words. Turns a topic into area ids.\n' +
+      '- who_knows {"area_ids": string[], "active_only"?: boolean}: People ranked by how well they know the given areas (merged PRs, reviews, comments, recent counts more), with the PRs that prove it.\n' +
+      `- get_item {"ref": string}: One issue or PR: title, description, state, author, labels, areas. Accepts '#12' or '12'.\n` +
+      '- search_history {"text": string}: Search PR and issue titles and descriptions: where something was discussed or decided.\n' +
+      '- related {"issue_ref": string}: Past issues and PRs related to an issue, each with the reason, plus the areas the issue is about.\n' +
+      `- suggest_reviewers {"issue_ref": string}: Active people who know an issue's areas best (never its author), with evidence.\n` +
+      '- knowledge_risk {}: Areas with recent work that at most one active person knows well (bus factor of one).\n' +
+      '- good_first_issues {"area_ids"?: string[]}: Open beginner-friendly issues, closest to the given areas first.\n' +
+      '\n' +
+      'Rules:\n' +
+      '- Answer only from tool results. Never invent people, PRs, issues, dates or reasons.\n' +
+      '- Cite a source for every person, claim or decision as [FalkorDB/falkordb-py#123]. Write people as @login.\n' +
+      '- Who knows something: find_areas to turn the topic into area ids, then who_knows with those ids.\n' +
+      '- Why something is the way it is: search_history, then get_item on the best one or two, then explain with citations.\n' +
+      '- About an issue: get_item, then related and suggest_reviewers. You only draft; nothing is posted anywhere.\n' +
+      '- Where to start / first contribution: find_areas for the interest, good_first_issues with those ids, then who_knows.\n' +
+      '- If the history does not hold the answer, say so plainly and say what you looked for.\n' +
+      '- Keep answers short: a few sentences or a short list.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    You are Lore. You know the GitHub repo FalkorDB/falkordb-py through a graph of its public history since 2025-11-01:
+    people (GitHub logins), pull requests, reviews, issues, comments, and areas of the code (directories).
+    
+    You work in steps. Each reply must be ONE JSON object and nothing else:
+    - to use a tool: {"tool": "<name>", "args": {...}}
+    - to answer:     {"answer": "<markdown>"}
+    
+    Tools:
+    - project_overview {}: The repo as a whole: people, active people, PRs, issues, areas, time span.
+    - find_areas {"text": string}: Areas of the code (directories) whose path or files mention the words. Turns a topic into area ids.
+    - who_knows {"area_ids": string[], "active_only"?: boolean}: People ranked by how well they know the given areas (merged PRs, reviews, comments, recent counts more), with the PRs that prove it.
+    - get_item {"ref": string}: One issue or PR: title, description, state, author, labels, areas. Accepts '#12' or '12'.
+    - search_history {"text": string}: Search PR and issue titles and descriptions: where something was discussed or decided.
+    - related {"issue_ref": string}: Past issues and PRs related to an issue, each with the reason, plus the areas the issue is about.
+    - suggest_reviewers {"issue_ref": string}: Active people who know an issue's areas best (never its author), with evidence.
+    - knowledge_risk {}: Areas with recent work that at most one active person knows well (bus factor of one).
+    - good_first_issues {"area_ids"?: string[]}: Open beginner-friendly issues, closest to the given areas first.
+    
+    Rules:
+    - Answer only from tool results. Never invent people, PRs, issues, dates or reasons.
+    - Cite a source for every person, claim or decision as [FalkorDB/falkordb-py#123]. Write people as @login.
+    - Who knows something: find_areas to turn the topic into area ids, then who_knows with those ids.
+    - Why something is the way it is: search_history, then get_item on the best one or two, then explain with citations.
+    - About an issue: get_item, then related and suggest_reviewers. You only draft; nothing is posted anywhere.
+    - Where to start / first contribution: find_areas for the interest, good_first_issues with those ids, then who_knows.
+    - If the history does not hold the answer, say so plainly and say what you looked for.
+    - Keep answers short: a few sentences or a short list.
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:51:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: finding 1: who_knows counts each PR once, so nobody seems to have written more PRs than exist
+not ok 3 - finding 1: who_knows counts each PR once, so nobody seems to have written more PRs than exist
+  ---
+  duration_ms: 1.973304
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:55:1'
+  failureType: 'testCodeFailure'
+  error: 'authored 34 of 33 merged PRs'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:60:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: finding 2: on a complete load, Knowledge risk lists the PRs and everyone on them, not 'only @x knows it'
+not ok 4 - finding 2: on a complete load, Knowledge risk lists the PRs and everyone on them, not 'only @x knows it'
+  ---
+  duration_ms: 7.667801
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:66:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + undefined
+    - [
+    -   'FalkorDB/falkordb-py#267',
+    -   'FalkorDB/falkordb-py#276',
+    -   'FalkorDB/falkordb-py#307'
+    - ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 'FalkorDB/falkordb-py#267'
+    1: 'FalkorDB/falkordb-py#276'
+    2: 'FalkorDB/falkordb-py#307'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:73:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: finding 2: the app's own wording makes no claim about who understands the code
+not ok 5 - finding 2: the app's own wording makes no claim about who understands the code
+  ---
+  duration_ms: 1.038752
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:85:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /nobody else does/. Input:
+    
+    'import * as L from "./lore.js";\n' +
+      '\n' +
+      'const $ = sel => document.querySelector(sel);\n' +
+      'const EXAMPLES = ["pallets/flask", "encode/httpx", "FalkorDB/falkordb-py", "fastapi/typer"];\n' +
+      'const SUGGESTIONS = [\n' +
+      '  "Who knows the most about this project overall?",\n' +
+      `  "I'm new here. Where should I start?",\n` +
+      '  "Which parts of the code depend on a single person?",\n' +
+      '  "What changed recently, and who did it?",\n' +
+      '];\n' +
+      'const FRESH_SECONDS = 24 * 3600;\n' +
+      '\n' +
+      'let anna = null;\n' +
+      'let graph = null;\n' +
+      'let busy = false;\n' +
+      '\n' +
+      '// --- Host ------------------------------------------------------------------------------------------\n' +
+      '\n' +
+      '/** The SDK has returned both bare results and {ok, result|error} envelopes; accept either. */\n' +
+      'function unwrap(r) {\n' +
+      '  if (r && typeof r === "object" && "ok" in r && ("result" in r || "error" in r)) {\n' +
+      '    if (r.ok) return r.result;\n' +
+      '    const e = new Error(r.error?.message || "Anna returned an error");\n' +
+      '    e.code = r.error?.code;\n' +
+      '    throw e;\n' +
+      '  }\n' +
+      '  return r;\n' +
+      '}\n' +
+      '\n' +
+      'async function complete({ systemPrompt, messages }) {\n' +
+      '  const r = unwrap(await anna.llm.complete({\n' +
+      '    systemPrompt,\n' +
+      '    messages: messages.map(m => ({ role: m.role, content: { type: "text", text: m.content } })),\n' +
+      '    maxTokens: 1500,\n' +
+      '    temperature: 0.2,\n' +
+      '  }, { timeoutMs: 120000 }));\n' +
+      '  const content = r?.content;\n' +
+      '  return Array.isArray(content) ? content.map(c => c.text || "").join("") : content?.text ?? "";\n' +
+      '}\n' +
+      '\n' +
+      'function llmMessage(e) {\n' +
+      `  if (e?.code === "quota_exceeded") return "Your Anna usage limit is reached for now, so Lore can't ask the model. The Experts and Knowledge risk tabs still work.";\n` +
+      `  if (e?.code === "permission_denied") return "Lore isn't allowed to use the model in this install. Reinstall the app and allow model access.";\n` +
+      '  return `The model call failed: ${e?.message || e}`;\n' +
+      '}\n' +
+      '\n' +
+      'async function store(key, value) {\n' +
+      '  try { unwrap(await anna.storage.set({ key, value })); return true; } catch { return false; }\n' +
+      '}\n' +
+      'async function load(key) {\n' +
+      '  try {\n' +
+      '    const r = unwrap(await anna.storage.get({ key }));\n' +
+      '    return r && r.exists !== false ? r.value ?? null : null;\n' +
+      '  } catch { return null; }\n' +
+      '}\n' +
+      'const snapKey = repo => `snap/${repo.replace("/", "__")}`;\n' +
+      '\n' +
+      '// --- Rendering helpers -----------------------------------------------------------------------------\n' +
+      '\n' +
+      `const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));\n` +
+      '\n' +
+      'function itemLink(id) {\n' +
+      '  const m = id.match(/^([\\w.-]+\\/[\\w.-]+)#(\\d+)$/);\n' +
+      '  const item = graph?.items.get(id);\n' +
+      '  const href = item?.url || (m ? `https://github.com/${m[1]}/issues/${m[2]}` : "#");\n' +
+      '  return `<a href="${esc(href)}" target="_blank" rel="noopener" title="${esc(item?.title || "")}">#${m ? m[2] : esc(id)}</a>`;\n' +
+      '}\n' +
+      'const person = login => `<a class="who" href="https://github.com/${esc(login)}" target="_blank" rel="noopener">@${esc(login)}</a>`;\n' +
+      '\n' +
+      '/** A small, safe Markdown subset: paragraphs, lists, bold, code, citations, @logins. */\n' +
+      'function md(text) {\n' +
+      "  // Links go in as placeholders, so a later pattern can't match inside a link's own markup.\n" +
+      '  const inline = s => {\n' +
+      '    const links = [];\n' +
+      '    const hold = html => `\\u0000${links.push(html) - 1}\\u0000`;\n' +
+      '    return esc(s)\n' +
+      '      .replace(/([\\w.-]+\\/[\\w.-]+#\\d+)\\b/g, (_, id) => hold(itemLink(id)))\n' +
+      '      .replace(/(^|[\\s(\\[,])#(\\d+)\\b/g, (_, pre, n) => pre + hold(itemLink(`${graph.repo}#${n}`)))\n' +
+      '      .replace(/\\[((?:\\u0000\\d+\\u0000|[\\s,;])+)\\]/g, "$1") // "[a, b]" around links -> "a, b"\n' +
+      '      .replace(/(^|[\\s(*_])@([A-Za-z0-9-]{1,39})\\b/g, (_, pre, login) => pre + hold(person(login)))\n' +
+      '      .replace(/\\*\\*([^*]+)\\*\\*/g, "<strong>$1</strong>")\n' +
+      '      .replace(/`([^`]+)`/g, "<code>$1</code>")\n' +
+      '      .replace(/\\u0000(\\d+)\\u0000/g, (_, i) => links[+i]);\n' +
+      '  };\n' +
+      '  const out = [];\n' +
+      '  let list = null;\n' +
+      '  for (const raw of String(text || "").split("\\n")) {\n' +
+      '    const line = raw.trimEnd();\n' +
+      '    const bullet = line.match(/^\\s*(?:[-*]|\\d+\\.)\\s+(.*)$/);\n' +
+      '    if (bullet) {\n' +
+      '      if (!list) { list = []; out.push(list); }\n' +
+      '      list.push(`<li>${inline(bullet[1])}</li>`);\n' +
+      '    } else if (!line.trim()) {\n' +
+      '      list = null;\n' +
+      '    } else {\n' +
+      '      list = null;\n' +
+      '      const h = line.match(/^#{1,4}\\s+(.*)$/);\n' +
+      '      out.push(h ? `<p><strong>${inline(h[1])}</strong></p>` : `<p>${inline(line)}</p>`);\n' +
+      '    }\n' +
+      '  }\n' +
+      '  return out.map(x => (Array.isArray(x) ? `<ul>${x.join("")}</ul>` : x)).join("");\n' +
+      '}\n' +
+      '\n' +
+      'function show(id) {\n' +
+      '  for (const s of ["start", "loading", "app"]) $("#" + s).hidden = s !== id;\n' +
+      '}\n' +
+      'function showError(message) {\n' +
+      '  const el = $("#error");\n' +
+      '  el.hidden = !message;\n' +
+      '  el.innerHTML = message ? `<strong>Something went wrong.</strong> ${esc(message)}` : "";\n' +
+      '}\n' +
+      'function setBusy(on) {\n' +
+      '  busy = on;\n' +
+      '  for (const b of document.querySelectorAll("button")) if (!b.closest(".tabs")) b.disabled = on;\n' +
+      '}\n' +
+      '\n' +
+      'function chips(el, values, onClick) {\n' +
+      '  el.innerHTML = "";\n' +
+      '  for (const v of values) {\n' +
+      '    const b = document.createElement("button");\n' +
+      '    b.type = "button";\n' +
+      '    b.className = "chip";\n' +
+      '    b.textContent = v;\n' +
+      '    b.addEventListener("click", () => onClick(v));\n' +
+      '    el.appendChild(b);\n' +
+      '  }\n' +
+      '}\n' +
+      '\n' +
+      '// --- Loading a repo --------------------------------------------------------------------------------\n' +
+      '\n' +
+      'async function loadRepo(input, { refresh = false } = {}) {\n' +
+      '  if (busy) return;\n' +
+      '  showError("");\n' +
+      '  const repo = L.parseRepo(input);\n' +
+      `  if (!repo) return showError("That doesn't look like a GitHub repo. Use owner/repo, like pallets/flask.");\n` +
+      '  $("#repo-input").value = repo;\n' +
+      '  setBusy(true);\n' +
+      '  show("loading");\n' +
+      '  $("#loading-title").textContent = `Reading ${repo}…`;\n' +
+      '  const steps = $("#loading-steps");\n' +
+      '  steps.innerHTML = "";\n' +
+      '  try {\n' +
+      '    let snap = refresh ? null : await load(snapKey(repo));\n' +
+      "    // A copy cut short by GitHub's rate limit is only kept until the limit has reset.\n" +
+      '    if (snap?.partial && Date.now() / 1000 > (snap.rate_reset || snap.fetched_at + 3600)) snap = null;\n' +
+      '    if (snap && Date.now() / 1000 - snap.fetched_at < FRESH_SECONDS) {\n' +
+      '      steps.innerHTML = `<li>Using the copy loaded ${ago(snap.fetched_at)}.</li>`;\n' +
+      '    } else {\n' +
+      '      const gh = L.makeGitHub();\n' +
+      '      snap = await L.fetchRepo(repo, {\n' +
+      '        gh,\n' +
+      '        onProgress: p => {\n' +
+      '          const li = document.createElement("li");\n' +
+      '          li.textContent = p.detail + (p.remaining != null ? `  ·  ${p.remaining} GitHub calls left this hour` : "");\n' +
+      '          if (p.label === "files" && steps.lastElementChild?.dataset.label === "files") steps.lastElementChild.remove();\n' +
+      '          li.dataset.label = p.label;\n' +
+      '          steps.appendChild(li);\n' +
+      '        },\n' +
+      '      });\n' +
+      '      await store(snapKey(snap.name), L.compactSnapshot(snap));\n' +
+      '    }\n' +
+      '    graph = L.buildGraph(snap);\n' +
+      '    const recent = [snap.name, ...((await load("recent")) || []).filter(r => r !== snap.name)].slice(0, 6);\n' +
+      '    await store("recent", recent);\n' +
+      '    try { await anna.window.set_title({ title: `Lore · ${snap.name}` }); } catch { /* optional */ }\n' +
+      '    renderRepo(snap);\n' +
+      '    show("app");\n' +
+      '  } catch (e) {\n' +
+      '    show("start");\n' +
+      '    const hint = e.kind === "rate"\n' +
+      '      ? " GitHub allows 60 calls an hour per connection; one repo takes about 40. Try again after the hour, or pick a repo you loaded before."\n' +
+      '      : "";\n' +
+      '    showError((e.message || String(e)) + hint);\n' +
+      '    console.error(e);\n' +
+      '  } finally {\n' +
+      '    setBusy(false);\n' +
+      '  }\n' +
+      '}\n' +
+      '\n' +
+      'function ago(t) {\n' +
+      '  const m = Math.round((Date.now() / 1000 - t) / 60);\n' +
+      '  return m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;\n' +
+      '}\n' +
+      '\n' +
+      'function renderRepo(snap) {\n' +
+      '  const o = L.projectOverview(graph);\n' +
+      '  $("#summary").innerHTML = `\n' +
+      '    <div><a href="${esc(o.url)}" target="_blank" rel="noopener"><strong>${esc(o.repo)}</strong></a>\n' +
+      '      ${o.description ? `<span class="muted"> · ${esc(o.description)}</span>` : ""}</div>\n' +
+      '    <div class="stats">\n' +
+      '      <span><b>${o.people}</b> people (${o.active_people} active)</span>\n' +
+      '      <span><b>${o.prs}</b> PRs</span><span><b>${o.issues}</b> issues</span><span><b>${o.areas}</b> areas</span>\n' +
+      '      <span class="muted">${esc(o.history_from)} → ${esc(o.history_to)} · loaded ${ago(snap.fetched_at)}</span>\n' +
+      '      <button type="button" class="link" id="refresh">Refresh</button>\n' +
+      '    </div>${partialBanner()}`;\n' +
+      '  $("#summary").classList.toggle("has-partial", L.coverage(graph).partial);\n' +
+      '  $("#refresh").addEventListener("click", () => loadRepo(graph.repo, { refresh: true }));\n' +
+      '  $("#risk-hint").textContent = L.coverage(graph).partial\n' +
+      `    ? "Areas with at least 3 merged PRs in the last six months that, in the data Lore fetched, at most one active person knows well. People whose work wasn't fetched don't show up here."\n` +
+      '    : "Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.";\n' +
+      '  $("#ask-out").innerHTML = "";\n' +
+      '  $("#triage-out").innerHTML = "";\n' +
+      '  chips($("#suggestions"), SUGGESTIONS, q => { $("#ask-input").value = q; ask(q); });\n' +
+      '  renderExperts();\n' +
+      '  renderRisk();\n' +
+      '  renderTriageOptions();\n' +
+      '  selectTab("ask");\n' +
+      '}\n' +
+      '\n' +
+      '// --- Tabs ------------------------------------------------------------------------------------------\n' +
+      '\n' +
+      'function selectTab(name) {\n' +
+      '  for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));\n' +
+      '  for (const p of document.querySelectorAll(".panel")) p.hidden = p.dataset.panel !== name;\n' +
+      '}\n' +
+      '\n' +
+      'function evidenceList(ev) {\n' +
+      '  if (!ev?.length) return "";\n' +
+      '  return `<ul class="evidence">${ev.map(e => `<li><span class="role">${esc(e.role)}</span> ${itemLink(e.id)} ${esc(e.title)} <span class="muted">${esc(e.at || "")}</span></li>`).join("")}</ul>`;\n' +
+      '}\n' +
+      '\n' +
+      `/** "14:05", or "14:05 on Nov 14" when that isn't today. Local time. */\n` +
+      'function clock(t) {\n' +
+      '  const d = new Date(t * 1000);\n' +
+      '  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });\n' +
+      '  return d.toDateString() === new Date().toDateString() ? time : `${time} on ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;\n' +
+      '}\n' +
+      '\n' +
+      '/** The banner every result view carries while the data is partial: how much was read, why, and what to do. */\n' +
+      'function partialBanner(lead = "") {\n' +
+      '  const c = L.coverage(gra'... 13550 more characters
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    import * as L from "./lore.js";
+    
+    const $ = sel => document.querySelector(sel);
+    const EXAMPLES = ["pallets/flask", "encode/httpx", "FalkorDB/falkordb-py", "fastapi/typer"];
+    const SUGGESTIONS = [
+      "Who knows the most about this project overall?",
+      "I'm new here. Where should I start?",
+      "Which parts of the code depend on a single person?",
+      "What changed recently, and who did it?",
+    ];
+    const FRESH_SECONDS = 24 * 3600;
+    
+    let anna = null;
+    let graph = null;
+    let busy = false;
+    
+    // --- Host ------------------------------------------------------------------------------------------
+    
+    /** The SDK has returned both bare results and {ok, result|error} envelopes; accept either. */
+    function unwrap(r) {
+      if (r && typeof r === "object" && "ok" in r && ("result" in r || "error" in r)) {
+        if (r.ok) return r.result;
+        const e = new Error(r.error?.message || "Anna returned an error");
+        e.code = r.error?.code;
+        throw e;
+      }
+      return r;
+    }
+    
+    async function complete({ systemPrompt, messages }) {
+      const r = unwrap(await anna.llm.complete({
+        systemPrompt,
+        messages: messages.map(m => ({ role: m.role, content: { type: "text", text: m.content } })),
+        maxTokens: 1500,
+        temperature: 0.2,
+      }, { timeoutMs: 120000 }));
+      const content = r?.content;
+      return Array.isArray(content) ? content.map(c => c.text || "").join("") : content?.text ?? "";
+    }
+    
+    function llmMessage(e) {
+      if (e?.code === "quota_exceeded") return "Your Anna usage limit is reached for now, so Lore can't ask the model. The Experts and Knowledge risk tabs still work.";
+      if (e?.code === "permission_denied") return "Lore isn't allowed to use the model in this install. Reinstall the app and allow model access.";
+      return `The model call failed: ${e?.message || e}`;
+    }
+    
+    async function store(key, value) {
+      try { unwrap(await anna.storage.set({ key, value })); return true; } catch { return false; }
+    }
+    async function load(key) {
+      try {
+        const r = unwrap(await anna.storage.get({ key }));
+        return r && r.exists !== false ? r.value ?? null : null;
+      } catch { return null; }
+    }
+    const snapKey = repo => `snap/${repo.replace("/", "__")}`;
+    
+    // --- Rendering helpers -----------------------------------------------------------------------------
+    
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    
+    function itemLink(id) {
+      const m = id.match(/^([\w.-]+\/[\w.-]+)#(\d+)$/);
+      const item = graph?.items.get(id);
+      const href = item?.url || (m ? `https://github.com/${m[1]}/issues/${m[2]}` : "#");
+      return `<a href="${esc(href)}" target="_blank" rel="noopener" title="${esc(item?.title || "")}">#${m ? m[2] : esc(id)}</a>`;
+    }
+    const person = login => `<a class="who" href="https://github.com/${esc(login)}" target="_blank" rel="noopener">@${esc(login)}</a>`;
+    
+    /** A small, safe Markdown subset: paragraphs, lists, bold, code, citations, @logins. */
+    function md(text) {
+      // Links go in as placeholders, so a later pattern can't match inside a link's own markup.
+      const inline = s => {
+        const links = [];
+        const hold = html => `\u0000${links.push(html) - 1}\u0000`;
+        return esc(s)
+          .replace(/([\w.-]+\/[\w.-]+#\d+)\b/g, (_, id) => hold(itemLink(id)))
+          .replace(/(^|[\s(\[,])#(\d+)\b/g, (_, pre, n) => pre + hold(itemLink(`${graph.repo}#${n}`)))
+          .replace(/\[((?:\u0000\d+\u0000|[\s,;])+)\]/g, "$1") // "[a, b]" around links -> "a, b"
+          .replace(/(^|[\s(*_])@([A-Za-z0-9-]{1,39})\b/g, (_, pre, login) => pre + hold(person(login)))
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\u0000(\d+)\u0000/g, (_, i) => links[+i]);
+      };
+      const out = [];
+      let list = null;
+      for (const raw of String(text || "").split("\n")) {
+        const line = raw.trimEnd();
+        const bullet = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+        if (bullet) {
+          if (!list) { list = []; out.push(list); }
+          list.push(`<li>${inline(bullet[1])}</li>`);
+        } else if (!line.trim()) {
+          list = null;
+        } else {
+          list = null;
+          const h = line.match(/^#{1,4}\s+(.*)$/);
+          out.push(h ? `<p><strong>${inline(h[1])}</strong></p>` : `<p>${inline(line)}</p>`);
+        }
+      }
+      return out.map(x => (Array.isArray(x) ? `<ul>${x.join("")}</ul>` : x)).join("");
+    }
+    
+    function show(id) {
+      for (const s of ["start", "loading", "app"]) $("#" + s).hidden = s !== id;
+    }
+    function showError(message) {
+      const el = $("#error");
+      el.hidden = !message;
+      el.innerHTML = message ? `<strong>Something went wrong.</strong> ${esc(message)}` : "";
+    }
+    function setBusy(on) {
+      busy = on;
+      for (const b of document.querySelectorAll("button")) if (!b.closest(".tabs")) b.disabled = on;
+    }
+    
+    function chips(el, values, onClick) {
+      el.innerHTML = "";
+      for (const v of values) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "chip";
+        b.textContent = v;
+        b.addEventListener("click", () => onClick(v));
+        el.appendChild(b);
+      }
+    }
+    
+    // --- Loading a repo --------------------------------------------------------------------------------
+    
+    async function loadRepo(input, { refresh = false } = {}) {
+      if (busy) return;
+      showError("");
+      const repo = L.parseRepo(input);
+      if (!repo) return showError("That doesn't look like a GitHub repo. Use owner/repo, like pallets/flask.");
+      $("#repo-input").value = repo;
+      setBusy(true);
+      show("loading");
+      $("#loading-title").textContent = `Reading ${repo}…`;
+      const steps = $("#loading-steps");
+      steps.innerHTML = "";
+      try {
+        let snap = refresh ? null : await load(snapKey(repo));
+        // A copy cut short by GitHub's rate limit is only kept until the limit has reset.
+        if (snap?.partial && Date.now() / 1000 > (snap.rate_reset || snap.fetched_at + 3600)) snap = null;
+        if (snap && Date.now() / 1000 - snap.fetched_at < FRESH_SECONDS) {
+          steps.innerHTML = `<li>Using the copy loaded ${ago(snap.fetched_at)}.</li>`;
+        } else {
+          const gh = L.makeGitHub();
+          snap = await L.fetchRepo(repo, {
+            gh,
+            onProgress: p => {
+              const li = document.createElement("li");
+              li.textContent = p.detail + (p.remaining != null ? `  ·  ${p.remaining} GitHub calls left this hour` : "");
+              if (p.label === "files" && steps.lastElementChild?.dataset.label === "files") steps.lastElementChild.remove();
+              li.dataset.label = p.label;
+              steps.appendChild(li);
+            },
+          });
+          await store(snapKey(snap.name), L.compactSnapshot(snap));
+        }
+        graph = L.buildGraph(snap);
+        const recent = [snap.name, ...((await load("recent")) || []).filter(r => r !== snap.name)].slice(0, 6);
+        await store("recent", recent);
+        try { await anna.window.set_title({ title: `Lore · ${snap.name}` }); } catch { /* optional */ }
+        renderRepo(snap);
+        show("app");
+      } catch (e) {
+        show("start");
+        const hint = e.kind === "rate"
+          ? " GitHub allows 60 calls an hour per connection; one repo takes about 40. Try again after the hour, or pick a repo you loaded before."
+          : "";
+        showError((e.message || String(e)) + hint);
+        console.error(e);
+      } finally {
+        setBusy(false);
+      }
+    }
+    
+    function ago(t) {
+      const m = Math.round((Date.now() / 1000 - t) / 60);
+      return m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+    }
+    
+    function renderRepo(snap) {
+      const o = L.projectOverview(graph);
+      $("#summary").innerHTML = `
+        <div><a href="${esc(o.url)}" target="_blank" rel="noopener"><strong>${esc(o.repo)}</strong></a>
+          ${o.description ? `<span class="muted"> · ${esc(o.description)}</span>` : ""}</div>
+        <div class="stats">
+          <span><b>${o.people}</b> people (${o.active_people} active)</span>
+          <span><b>${o.prs}</b> PRs</span><span><b>${o.issues}</b> issues</span><span><b>${o.areas}</b> areas</span>
+          <span class="muted">${esc(o.history_from)} → ${esc(o.history_to)} · loaded ${ago(snap.fetched_at)}</span>
+          <button type="button" class="link" id="refresh">Refresh</button>
+        </div>${partialBanner()}`;
+      $("#summary").classList.toggle("has-partial", L.coverage(graph).partial);
+      $("#refresh").addEventListener("click", () => loadRepo(graph.repo, { refresh: true }));
+      $("#risk-hint").textContent = L.coverage(graph).partial
+        ? "Areas with at least 3 merged PRs in the last six months that, in the data Lore fetched, at most one active person knows well. People whose work wasn't fetched don't show up here."
+        : "Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.";
+      $("#ask-out").innerHTML = "";
+      $("#triage-out").innerHTML = "";
+      chips($("#suggestions"), SUGGESTIONS, q => { $("#ask-input").value = q; ask(q); });
+      renderExperts();
+      renderRisk();
+      renderTriageOptions();
+      selectTab("ask");
+    }
+    
+    // --- Tabs ------------------------------------------------------------------------------------------
+    
+    function selectTab(name) {
+      for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.tab === name));
+      for (const p of document.querySelectorAll(".panel")) p.hidden = p.dataset.panel !== name;
+    }
+    
+    function evidenceList(ev) {
+      if (!ev?.length) return "";
+      return `<ul class="evidence">${ev.map(e => `<li><span class="role">${esc(e.role)}</span> ${itemLink(e.id)} ${esc(e.title)} <span class="muted">${esc(e.at || "")}</span></li>`).join("")}</ul>`;
+    }
+    
+    /** "14:05", or "14:05 on Nov 14" when that isn't today. Local time. */
+    function clock(t) {
+      const d = new Date(t * 1000);
+      const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return d.toDateString() === new Date().toDateString() ? time : `${time} on ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`;
+    }
+    
+    /** The banner every result view carries while the data is partial: how much was read, why, and what to do. */
+    function partialBanner(lead = "") {
+      const c = L.coverage(graph);
+      if (!c.partial) return "";
+      let next = "";
+      if (c.rateLimited) {
+        const waiting = c.resetAt && c.resetAt > Date.now() / 1000;
+        next = waiting
+          ? ` GitHub's limit resets at ${esc(clock(c.resetAt))}; press Refresh after that for a ${c.canBeComplete ? "complete" : "fuller"} run.`
+          : ` GitHub's limit has reset; press Refresh for a ${c.canBeComplete ? "complete" : "fuller"} run.`;
+      }
+      return `<div class="partial-banner" role="note"><span class="partial-icon" aria-hidden="true">!</span>
+        <div><strong>Based on partial data:</strong> ${esc(c.headline)}. ${esc(c.detail)}${next}${lead ? " " + esc(lead) : ""}</div></div>`;
+    }
+    const partialBadge = () => (L.coverage(graph).partial ? ' <span class="partial-badge" title="Lore read only part of this repo\'s history">partial data</span>' : "");
+    
+    /** A note above a model-written text that states an absence as fact while the data is partial. */
+    function caveatNote(caveats) {
+      if (!caveats?.length) return "";
+      return `<div class="caveat" role="note"><strong>Read with care.</strong> This text states something as fact that partial data can't prove:
+        <ul>${caveats.slice(0, 3).map(c => `<li>“${esc(c)}”</li>`).join("")}</ul>People whose work Lore didn't fetch may know this code too.</div>`;
+    }
+    
+    function renderExperts() {
+      const rows = L.areaDirectory(graph);
+      const partial = L.coverage(graph).partial;
+      $("#experts-out").classList.toggle("partial-list", partial);
+      $("#experts-out").innerHTML = partialBanner("The rankings below count only the pull requests Lore read.") + (rows.length ? rows.map(a => `
+        <details class="area">
+          <summary><code>${esc(a.area)}</code> <span class="muted">${a.prs} PRs · ${a.files} files</span>${partialBadge()}
+            <span class="people">${a.top.map(t => person(t.login) + (t.active ? "" : ' <span class="muted">(inactive)</span>')).join(", ")}</span></summary>
+          <div class="area-body" data-area="${esc(a.area)}"></div>
+        </details>`).join("")
+        : `<p class="muted">No merged PRs with known files in the loaded history, so there's nothing to rank yet.</p>`);
+      for (const d of document.querySelectorAll("#experts-out details")) {
+        d.addEventListener("toggle", () => {
+          const body = d.querySelector(".area-body");
+          if (!d.open || body.dataset.done) return;
+          body.dataset.done = "1";
+          body.innerHTML = L.whoKnows(graph, [body.dataset.area]).map(p => `
+            <div class="expert">${person(p.login)} <span class="muted">score ${p.score} · ${p.authored} merged, ${p.reviewed} reviewed, ${p.commented} commented · last ${esc(p.last_at)}${p.active ? "" : " · inactive"}</span>
+            ${evidenceList(p.evidence)}</div>`).join("");
+        });
+      }
+    }
+    
+    function renderRisk() {
+      const rows = L.knowledgeRisk(graph);
+      const partial = L.coverage(graph).partial;
+      const verdict = r => {
+        if (partial) {
+          return r.knowers.length
+            ? `Based on fetched data, only ${person(r.knowers[0])} knows it well`
+            : "Based on fetched data, no active person knows it well";
+        }
+        return r.knowers.length ? "only " + person(r.knowers[0]) + " knows it well" : "<strong>no active person</strong> knows it well";
+      };
+      $("#risk-out").classList.toggle("partial-list", partial);
+      $("#risk-out").innerHTML = partialBanner("An area listed here may have more people who know it than Lore has seen, so don't read this as the project's bus factor.") + (rows.length
+        ? `<ul class="risk">${rows.map(r => `<li><code>${esc(r.area)}</code> · ${r.recent_prs} merged PRs ${partial ? "fetched from the last" : "in"} six months · ${verdict(r)}${partialBadge()}</li>`).join("")}</ul>`
+        : partial
+          ? `<p class="muted">In the fetched data, no area with recent work depends on a single active person. With partial data, that isn't a clean bill of health.</p>`
+          : `<p class="muted">No area with recent work depends on a single active person. Good news.</p>`);
+    }
+    
+    function renderTriageOptions() {
+      const open = L.openIssues(graph);
+      $("#triage-select").innerHTML = open.length
+        ? open.map(i => `<option value="${esc(i.id)}">#${esc(i.id.split("#")[1])} ${esc(i.title.slice(0, 90))}</option>`).join("")
+        : `<option value="">No open issues in the loaded history</option>`;
+      $("#triage-go").disabled = !open.length;
+    }
+    
+    // --- Ask -------------------------------------------------------------------------------------------
+    
+    async function ask(question) {
+      question = question.trim();
+      if (!question || busy || !graph) return;
+      setBusy(true);
+      const out = $("#ask-out");
+      out.innerHTML = `<div class="q">${esc(question)}</div>
+        <details class="hood" open><summary>Under the hood</summary><ol class="trace"></ol></details>
+        <div class="answer pending"><div class="spinner small"></div> Thinking…</div>`;
+      const trace = out.querySelector(".trace");
+      const answer = out.querySelector(".answer");
+      try {
+        const res = await L.runAgent(graph, question, {
+          complete,
+          onEvent: ev => {
+            if (ev.type === "call") {
+              const li = document.createElement("li");
+              li.innerHTML = `<code>${esc(ev.tool)}</code> <span class="muted">${esc(JSON.stringify(ev.args))}</span> <span class="res"></span>`;
+              trace.appendChild(li);
+            } else if (ev.type === "result") {
+              const res = trace.lastElementChild?.querySelector(".res");
+              if (res) res.textContent = "→ " + ev.summary;
+            }
+          },
+        });
+        answer.classList.remove("pending");
+        if (!res) {
+          answer.innerHTML = `<p class="warn">Lore couldn't finish this one. Try asking it more simply.</p>`;
+        } else {
+          out.querySelector(".hood").open = false;
+          answer.insertAdjacentHTML("beforebegin", partialBanner("This answer was written from that data.") + caveatNote(res.caveats));
+          answer.innerHTML = md(res.text) + (res.evidence.items.length
+            ? `<div class="sources"><span class="muted">Looked at:</span> ${res.evidence.items.slice(0, 12).map(i => itemLink(i.id)).join(" ")}</div>` : "");
+        }
+      } catch (e) {
+        answer.classList.remove("pending");
+        answer.innerHTML = `<p class="warn">${esc(llmMessage(e))}</p>`;
+        console.error(e);
+      } finally {
+        setBusy(false);
+      }
+    }
+    
+    // --- Triage ----------------------------------------------------------------------------------------
+    
+    async function runTriage(id) {
+      if (!id || busy) return;
+      setBusy(true);
+      const out = $("#triage-out");
+      out.innerHTML = `<div class="answer pending"><div class="spinner small"></div> Looking through the history…</div>`;
+      try {
+        const r = await L.triage(graph, id, { complete });
+        if (r.error) { out.innerHTML = `<p class="warn">${esc(r.error)}</p>`; return; }
+        out.innerHTML = `${partialBanner("The people and related work below come from that data.")}
+          <h3>${itemLink(r.issue.id)} ${esc(r.issue.title)}</h3>
+          <div class="grid">
+            <div><h4>Areas it's about</h4>${r.areas.length ? `<ul>${r.areas.map(a => `<li><code>${esc(a.area)}</code> <span class="muted">${esc(a.reasons.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">No area stands out.</p>`}</div>
+            <div><h4>Who knows it${partialBadge()}</h4>${r.reviewers.length ? r.reviewers.map(p => `<div class="expert">${person(p.login)} <span class="muted">score ${p.score}</span>${evidenceList(p.evidence)}</div>`).join("") : `<p class="muted">Nobody active stands out.</p>`}</div>
+          </div>
+          <h4>Related past work</h4>
+          ${r.related.length ? `<ul>${r.related.map(x => `<li>${itemLink(x.id)} ${esc(x.title)} <span class="muted">${esc(x.why.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">Nothing related in the last 12 months.</p>`}
+          <h4>Drafted reply <span class="muted small">(not posted)</span></h4>
+          ${caveatNote(r.caveats)}<div class="draft">${md(r.draft)}</div>
+          <button type="button" class="link" id="copy-draft">Copy draft</button>`;
+        $("#copy-draft").addEventListener("click", async () => {
+          try { await navigator.clipboard.writeText(r.draft); $("#copy-draft").textContent = "Copied"; } catch { $("#copy-draft").textContent = "Select the text to copy it"; }
+        });
+      } catch (e) {
+        out.innerHTML = `<p class="warn">${esc(llmMessage(e))}</p>`;
+        console.error(e);
+      } finally {
+        setBusy(false);
+      }
+    }
+    
+    // --- Boot ------------------------------------------------------------------------------------------
+    
+    async function boot() {
+      try {
+        const sdk = await import("/static/anna-apps/_sdk/latest/index.js");
+        anna = await sdk.AnnaAppRuntime.connect();
+      } catch (e) {
+        showError("Lore runs inside Anna. Open it from the Anna App Store.");
+        console.error(e);
+        return;
+      }
+      if (anna.onThemeChange) anna.onThemeChange(({ theme }) => { document.documentElement.dataset.theme = theme; });
+      else if (anna.theme) document.documentElement.dataset.theme = anna.theme;
+    
+      chips($("#examples"), EXAMPLES, r => loadRepo(r));
+      const recent = (await load("recent")) || [];
+      if (recent.length) { $("#recent-wrap").hidden = false; chips($("#recent"), recent, r => loadRepo(r)); }
+    
+      $("#repo-form").addEventListener("submit", e => { e.preventDefault(); loadRepo($("#repo-input").value); });
+      $("#ask-form").addEventListener("submit", e => { e.preventDefault(); ask($("#ask-input").value); });
+      $("#ask-input").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(e.target.value); } });
+      $("#triage-form").addEventListener("submit", e => { e.preventDefault(); runTriage($("#triage-select").value); });
+      for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => selectTab(b.dataset.tab));
+    
+      // Opened from chat with a repo (open_app_view payload), or a repo the person asked about.
+      const payload = anna.entryPayload || {};
+      if (payload.repo) loadRepo(payload.repo);
+      anna.on?.("entry_payload", p => { if (p?.repo) loadRepo(p.repo); else if (p?.question && graph) ask(p.question); });
+    }
+    
+    boot();
+    
+    <!doctype html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Lore</title>
+      <link rel="stylesheet" href="./style.css" />
+    </head>
+    <body>
+      <header class="top">
+        <div class="brand">
+          <img src="./icon.svg" alt="" width="28" height="28" />
+          <div>
+            <h1>Lore</h1>
+            <p class="tag">Who knows what in a GitHub repo, with the PRs to prove it</p>
+          </div>
+        </div>
+        <form id="repo-form" class="repo-form" autocomplete="off">
+          <input id="repo-input" type="text" placeholder="owner/repo or a GitHub URL" aria-label="GitHub repo" spellcheck="false" />
+          <button id="repo-load" type="submit">Load</button>
+        </form>
+      </header>
+    
+      <section id="start" class="start">
+        <h2>Point Lore at any public GitHub repo</h2>
+        <p>Lore reads the last 12 months of pull requests, reviews, issues and comments, works out which people know which parts of the code, and answers questions from that history. Every answer cites the PRs and issues behind it.</p>
+        <div class="chips" id="examples"></div>
+        <div id="recent-wrap" hidden>
+          <h3>Loaded before</h3>
+          <div class="chips" id="recent"></div>
+        </div>
+      </section>
+    
+      <section id="loading" class="loading" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <div>
+          <p id="loading-title">Reading the history…</p>
+          <ol id="loading-steps" class="steps"></ol>
+        </div>
+      </section>
+    
+      <section id="error" class="error" role="alert" hidden></section>
+    
+      <main id="app" hidden>
+        <div class="summary" id="summary"></div>
+        <nav class="tabs" role="tablist">
+          <button role="tab" data-tab="ask" aria-selected="true">Ask</button>
+          <button role="tab" data-tab="experts">Experts</button>
+          <button role="tab" data-tab="triage">Triage an issue</button>
+          <button role="tab" data-tab="risk">Knowledge risk</button>
+        </nav>
+    
+        <section class="panel" data-panel="ask">
+          <form id="ask-form" class="ask-form">
+            <textarea id="ask-input" rows="2" placeholder="Who knows the query planner? Why was X changed? I'm new, where should I start?"></textarea>
+            <button id="ask-go" type="submit">Ask</button>
+          </form>
+          <div class="chips" id="suggestions"></div>
+          <div id="ask-out"></div>
+        </section>
+    
+        <section class="panel" data-panel="experts" hidden>
+          <p class="hint">Areas of the code by how much changed in them, and the people who know each best. Merged PRs count most, then reviews, then comments; recent work counts more.</p>
+          <div id="experts-out"></div>
+        </section>
+    
+        <section class="panel" data-panel="triage" hidden>
+          <p class="hint">Pick an open issue: Lore finds related past work and who knows that part of the code, and drafts a first reply. Nothing is posted anywhere.</p>
+          <form id="triage-form" class="triage-form">
+            <select id="triage-select" aria-label="Open issue"></select>
+            <button id="triage-go" type="submit">Triage</button>
+          </form>
+          <div id="triage-out"></div>
+        </section>
+    
+        <section class="panel" data-panel="risk" hidden>
+          <p class="hint" id="risk-hint">Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.</p>
+          <div id="risk-out"></div>
+        </section>
+      </main>
+    
+      <footer class="foot">Reads public GitHub data only, from your browser. Keeps GitHub logins, never emails or names. Answers use your Anna model. Lore 0.1.1</footer>
+    
+      <script type="module" src="./app.js"></script>
+    </body>
+    </html>
+    
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:88:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: finding 2: the sentence check runs on complete loads too, and a hedge doesn't excuse 'only @x knows'
+not ok 6 - finding 2: the sentence check runs on complete loads too, and a hedge doesn't excuse 'only @x knows'
+  ---
+  duration_ms: 1.445441
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:92:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Only @gkorland knows falkordb/asyncio.
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:100:13)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: finding 3: on a complete load, a triage draft that promises a fix or volunteers someone is caught
+not ok 7 - finding 3: on a complete load, a triage draft that promises a fix or volunteers someone is caught
+  ---
+  duration_ms: 2.71013
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:105:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /as a maintainer would write it/. Input:
+    
+    'Draft a short, friendly first reply to this GitHub issue, as a maintainer would write it.\n' +
+      'Point to the related past issues/PRs that matter, as [FalkorDB/falkordb-py#n], and say who knows this area best as @login with why.\n' +
+      'Do not promise fixes or dates. Do not invent anything not in the data. Under 120 words. Plain markdown.\n' +
+      '\n' +
+      `Issue: {"id":"FalkorDB/falkordb-py#306","kind":"Issue","title":"Default settings surface errors during failovers and rolling updates (retry=None disables redis-py retries, no timeouts)","state":"open","url":"https://github.com/FalkorDB/falkordb-py/issues/306","author":"dudizimber","labels":[],"body":"## Summary\\n\\nWith its default settings, falkordb-py 1.8.0 surfaces errors to the application during planned operations on replication (Sentinel) and cluster deployments: rolling updates, upgrades, scaling, pod rescheduling. Other redis-py users don't see these errors with redis-py's own defaults. We found this while testing zero-downtime operations for FalkorDB Cloud (FalkorDB/falkordb-omnistrate#8","created":"2026-10-16","merged":null,"fixed_by":[]}\n` +
+      'Related: [{"id":"FalkorDB/falkordb-py#315","kind":"PR","title":"chore(release): 1.8.1","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/315","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#308","kind":"PR","title":"Add Redis Sentinel support to the async client","state":"open","url":"https://github.com/FalkorDB/falkordb-py/pull/308","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#307","kind":"PR","title":"Re-discover sentinel master on every reconnect","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/307","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#314","kind":"Issue","title":"Release v1.8.1","state":"closed","url":"https://github.com/FalkorDB/falkordb-py/issues/314","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#305","kind":"PR","title":"chore(release): 1.8.0","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/305","score":1.5,"why":["linked through #315"]}]\n' +
+      'Areas: [{"area":"falkordb","score":2.5,"reasons":["mentions cluster, falkordb, sentinel"]},{"area":"falkordb/asyncio","score":2,"reasons":["mentions cluster, falkordb"]},{"area":".github","score":0.5,"reasons":["mentions settings"]}]\n' +
+      'People who know these areas: [{"login":"gkorland","score":4.64,"evidence":[{"role":"authored","id":"FalkorDB/falkordb-py#247","kind":"PR","title":"chore(release): prepare v1.6.2","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/247","at":"2026-07-19"},{"role":"reviewed","id":"FalkorDB/falkordb-py#236","kind":"PR","title":"Fix async unix-socket connection crashing in Is_Cluster (#235)","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/236","at":"2026-07-19"},{"role":"authored","id":"FalkorDB/falkordb-py#198","kind":"PR","title":"feat(connection): add Unix socket documentation and tests","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/198","at":"2026-03-31"}]},{"login":"swilly22","score":2.79,"evidence":[{"role":"reviewed","id":"FalkorDB/falkordb-py#267","kind":"PR","title":"test: assert the client parses execution plans, and fix a plan parser bug","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/267","at":"2026-08-13"},{"role":"reviewed","id":"FalkorDB/falkordb-py#168","kind":"PR","title":"Add lint or CI","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/168","at":"2026-02-16"},{"role":"authored","id":"FalkorDB/falkordb-py#141","kind":"PR","title":"propagate udf commands","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/141","at":"2025-12-07"}]},{"login":"Naseem77","score":2.7,"evidence":[{"role":"reviewed","id":"FalkorDB/falkordb-py#276","kind":"PR","title":"fix(asyncio): prevent connection pool kwargs mutation and await schema refresh","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/276","at":"2026-08-13"},{"role":"authored","id":"FalkorDB/falkordb-py#267","kind":"PR","title":"test: assert the client parses execution plans, and fix a plan parser bug","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/267","at":"2026-08-13"}]}]'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    Draft a short, friendly first reply to this GitHub issue, as a maintainer would write it.
+    Point to the related past issues/PRs that matter, as [FalkorDB/falkordb-py#n], and say who knows this area best as @login with why.
+    Do not promise fixes or dates. Do not invent anything not in the data. Under 120 words. Plain markdown.
+    
+    Issue: {"id":"FalkorDB/falkordb-py#306","kind":"Issue","title":"Default settings surface errors during failovers and rolling updates (retry=None disables redis-py retries, no timeouts)","state":"open","url":"https://github.com/FalkorDB/falkordb-py/issues/306","author":"dudizimber","labels":[],"body":"## Summary\n\nWith its default settings, falkordb-py 1.8.0 surfaces errors to the application during planned operations on replication (Sentinel) and cluster deployments: rolling updates, upgrades, scaling, pod rescheduling. Other redis-py users don't see these errors with redis-py's own defaults. We found this while testing zero-downtime operations for FalkorDB Cloud (FalkorDB/falkordb-omnistrate#8","created":"2026-10-16","merged":null,"fixed_by":[]}
+    Related: [{"id":"FalkorDB/falkordb-py#315","kind":"PR","title":"chore(release): 1.8.1","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/315","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#308","kind":"PR","title":"Add Redis Sentinel support to the async client","state":"open","url":"https://github.com/FalkorDB/falkordb-py/pull/308","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#307","kind":"PR","title":"Re-discover sentinel master on every reconnect","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/307","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#314","kind":"Issue","title":"Release v1.8.1","state":"closed","url":"https://github.com/FalkorDB/falkordb-py/issues/314","score":3,"why":["linked directly"]},{"id":"FalkorDB/falkordb-py#305","kind":"PR","title":"chore(release): 1.8.0","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/305","score":1.5,"why":["linked through #315"]}]
+    Areas: [{"area":"falkordb","score":2.5,"reasons":["mentions cluster, falkordb, sentinel"]},{"area":"falkordb/asyncio","score":2,"reasons":["mentions cluster, falkordb"]},{"area":".github","score":0.5,"reasons":["mentions settings"]}]
+    People who know these areas: [{"login":"gkorland","score":4.64,"evidence":[{"role":"authored","id":"FalkorDB/falkordb-py#247","kind":"PR","title":"chore(release): prepare v1.6.2","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/247","at":"2026-07-19"},{"role":"reviewed","id":"FalkorDB/falkordb-py#236","kind":"PR","title":"Fix async unix-socket connection crashing in Is_Cluster (#235)","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/236","at":"2026-07-19"},{"role":"authored","id":"FalkorDB/falkordb-py#198","kind":"PR","title":"feat(connection): add Unix socket documentation and tests","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/198","at":"2026-03-31"}]},{"login":"swilly22","score":2.79,"evidence":[{"role":"reviewed","id":"FalkorDB/falkordb-py#267","kind":"PR","title":"test: assert the client parses execution plans, and fix a plan parser bug","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/267","at":"2026-08-13"},{"role":"reviewed","id":"FalkorDB/falkordb-py#168","kind":"PR","title":"Add lint or CI","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/168","at":"2026-02-16"},{"role":"authored","id":"FalkorDB/falkordb-py#141","kind":"PR","title":"propagate udf commands","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/141","at":"2025-12-07"}]},{"login":"Naseem77","score":2.7,"evidence":[{"role":"reviewed","id":"FalkorDB/falkordb-py#276","kind":"PR","title":"fix(asyncio): prevent connection pool kwargs mutation and await schema refresh","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/276","at":"2026-08-13"},{"role":"authored","id":"FalkorDB/falkordb-py#267","kind":"PR","title":"test: assert the client parses execution plans, and fix a plan parser bug","state":"merged","url":"https://github.com/FalkorDB/falkordb-py/pull/267","at":"2026-08-13"}]}]
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:118:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: finding 3: commitments() flags promises, timelines and assignments, and leaves plain facts alone
+not ok 8 - finding 3: commitments() flags promises, timelines and assignments, and leaves plain facts alone
+  ---
+  duration_ms: 0.144528
+  type: 'test'
+  location: '<scratch>/v011/tests/review-0.1.2.test.mjs:124:1'
+  failureType: 'testCodeFailure'
+  error: 'L.commitments is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (file://<scratch>/v011/tests/review-0.1.2.test.mjs:134:21)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 0
+# fail 8
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 80.461897

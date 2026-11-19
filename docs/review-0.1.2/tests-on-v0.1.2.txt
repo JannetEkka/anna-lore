@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: finding 1: on a complete load, an answer calling someone the only person who understands the repo is caught
+ok 1 - finding 1: on a complete load, an answer calling someone the only person who understands the repo is caught
+  ---
+  duration_ms: 10.008676
+  type: 'test'
+  ...
+# Subtest: finding 1: the model is told on every load to describe activity, not understanding
+ok 2 - finding 1: the model is told on every load to describe activity, not understanding
+  ---
+  duration_ms: 0.779573
+  type: 'test'
+  ...
+# Subtest: finding 1: who_knows counts each PR once, so nobody seems to have written more PRs than exist
+ok 3 - finding 1: who_knows counts each PR once, so nobody seems to have written more PRs than exist
+  ---
+  duration_ms: 18.336509
+  type: 'test'
+  ...
+# Subtest: finding 2: on a complete load, Knowledge risk lists the PRs and everyone on them, not 'only @x knows it'
+ok 4 - finding 2: on a complete load, Knowledge risk lists the PRs and everyone on them, not 'only @x knows it'
+  ---
+  duration_ms: 9.188165
+  type: 'test'
+  ...
+# Subtest: finding 2: the app's own wording makes no claim about who understands the code
+ok 5 - finding 2: the app's own wording makes no claim about who understands the code
+  ---
+  duration_ms: 1.375806
+  type: 'test'
+  ...
+# Subtest: finding 2: the sentence check runs on complete loads too, and a hedge doesn't excuse 'only @x knows'
+ok 6 - finding 2: the sentence check runs on complete loads too, and a hedge doesn't excuse 'only @x knows'
+  ---
+  duration_ms: 1.587483
+  type: 'test'
+  ...
+# Subtest: finding 3: on a complete load, a triage draft that promises a fix or volunteers someone is caught
+ok 7 - finding 3: on a complete load, a triage draft that promises a fix or volunteers someone is caught
+  ---
+  duration_ms: 3.338112
+  type: 'test'
+  ...
+# Subtest: finding 3: commitments() flags promises, timelines and assignments, and leaves plain facts alone
+ok 8 - finding 3: commitments() flags promises, timelines and assignments, and leaves plain facts alone
+  ---
+  duration_ms: 0.198228
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 103.132724

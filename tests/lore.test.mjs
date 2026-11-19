@@ -145,7 +145,8 @@ test("the free allowance's 30-PR cap counts as partial data too, and a full read
   assert.equal(L.coverage(full).partial, false);
   assert.equal(L.dataNote(full), "");
   assert.doesNotMatch(L.systemPrompt(full), /PARTIAL/);
-  assert.deepEqual(L.absoluteClaims(full, "Only @a knows it."), []);
+  // v0.1.1 let this through on a complete load; Anna's second review (Nov 17) showed that was the bug.
+  assert.equal(L.absoluteClaims(full, "Only @a knows it.").length, 1);
 });
 
 test("a repo with more PRs than Lore lists says 'at least'", () => {
@@ -189,12 +190,15 @@ test("absoluteClaims flags unhedged absolutes and lets hedged ones through", asy
     "This area has a bus factor of 1.",
     "The compiler is a single point of failure.",
     "The docs depend entirely on @rickhanlonii.",
+    // v0.1.2: a hedge no longer excuses these, and "knows it best" is a claim about understanding.
+    "Based on the fetched data, only @eps1lon knows it well.",
+    "@eps1lon knows it best [facebook/react#1], and @acdlite reviewed #2.",
   ];
   for (const s of flagged) assert.equal(L.absoluteClaims(graph, s).length, 1, s);
   const fine = [
-    "Based on the fetched data, only @eps1lon knows it well.",
-    "@eps1lon knows it best [facebook/react#1], and @acdlite reviewed #2.",
+    "@eps1lon authored 5 of the 9 merged PRs touching packages/react-dom [facebook/react#1], and @acdlite reviewed #2.",
     "In the partial data Lore read, nobody else shows up for this area.",
+    "Few people appear in this area's history. That doesn't mean nobody else understands it.",
     "The full history may show more people; only @a appears here.",
   ];
   for (const s of fine) assert.deepEqual(L.absoluteClaims(graph, s), [], s);

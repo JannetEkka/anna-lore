@@ -21,12 +21,13 @@ const browser = await chromium.launch();
 const errors = [];
 
 /** A fresh Lore window: its own storage, a fixed clock, GitHub and the Anna SDK served from here. */
-async function openLore({ overstates = false } = {}) {
+async function openLore({ overstates = false, overclaims = false } = {}) {
 const page = await browser.newPage({ viewport: { width: 1000, height: 760 }, timezoneId: "UTC", locale: "en-GB", deviceScaleFactor: 2 });
 page.on("pageerror", e => errors.push(e.message));
 // The browser logs GitHub's own 403 when the rate limit hits; that one is the scenario, not a fault.
 page.on("console", m => { if (m.type() === "error" && !/status of 403/.test(m.text())) errors.push(m.text()); });
 if (overstates) await page.addInitScript(() => { window.__mockOverstates = true; });
+if (overclaims) await page.addInitScript(() => { window.__mockOverclaims = true; });
 await page.addInitScript(fixedNow => {
   const RealDate = Date;
   globalThis.Date = class extends RealDate {
@@ -129,11 +130,11 @@ await p2.screenshot({ path: path.join(out, "partial-2-experts.png"), fullPage: t
 
 await p2.click('.tabs button[data-tab="risk"]');
 const risk = await p2.textContent("#risk-out");
-check(banner.test(risk) && risk.includes("don't read this as the project's bus factor"), "rate-limited: Knowledge risk carries the banner inside the results");
-const riskRows = await p2.$$eval("#risk-out .risk li", els => els.map(e => e.textContent));
-check(riskRows.length > 0 && riskRows.every(t => /Based on fetched data, (only @[\w-]+|no active person) knows it well/.test(t) && /partial data/i.test(t)),
-  `rate-limited: each of the ${riskRows.length} risk rows says "Based on fetched data" and has a badge`);
-check((await p2.textContent(".panel[data-panel=risk] .hint")).includes("in the data Lore fetched"), "rate-limited: the Knowledge risk hint is softened");
+check(banner.test(risk) && risk.includes("more people working on it than Lore has seen"), "rate-limited: Knowledge risk carries the banner inside the results");
+const riskRows = await p2.$$eval("#risk-out .risk > li", els => els.map(e => e.textContent));
+check(riskRows.length > 0 && riskRows.every(t => /partial data/i.test(t) && /doesn't mean nobody else understands it/.test(t)),
+  `rate-limited: each of the ${riskRows.length} risk rows has a badge and says what the history can't show`);
+check((await p2.textContent(".panel[data-panel=risk] .hint")).includes("People whose work Lore didn't fetch"), "rate-limited: the Knowledge risk hint says unfetched work is missing");
 await p2.screenshot({ path: path.join(out, "partial-3-risk.png"), fullPage: true });
 
 await p2.click('.tabs button[data-tab="ask"]');
@@ -153,7 +154,68 @@ await p2.click("#triage-go");
 await p2.waitForSelector(".draft", { timeout: 20000 });
 check(banner.test(await p2.textContent("#triage-out")), "rate-limited: Triage carries the banner");
 check(/The data is PARTIAL/.test(await p2.evaluate(() => window.__annaCalls.filter(c => c[0] === "llm.complete").at(-1)[1].messages[0].content.text)), "rate-limited: the triage prompt says the data is partial");
+check((await p2.textContent("#triage-out")).includes("Before you post") && (await p2.$$(".caveat.promise li")).length === 2,
+  "a draft that still promises after the rewrite request gets a 'Before you post' note quoting both promises");
 await p2.screenshot({ path: path.join(out, "partial-5-triage.png"), fullPage: true });
+
+await p2.close();
+
+// --- A complete load: what Anna's second App Review (Nov 17) saw, with no partial data -------------
+// A smaller repo that Lore reads in full: the 14 merged PRs the rate-limited run read, and every other PR.
+const L = await import("../bundle/lore.js");
+const { fakeFetch } = await import("./github-fixture.mjs");
+const cut = await L.fetchRepo("FalkorDB/falkordb-py", { gh: L.makeGitHub({ fetchImpl: fakeFetch(githubRoutes(snap, { remaining: 20 })) }), now: snap.fetched_at * 1000 });
+const read = new Set(cut.prs.filter(p => p.files.length).map(p => p.number));
+const small = { ...snap, prs: snap.prs.filter(p => p.state !== "merged" || read.has(p.number)) };
+routes = githubRoutes(small, { remaining: 60 });
+const p3 = await openLore({ overclaims: true });
+await p3.goto("http://lore.test/anna-apps/lore/dev/index.html?wid=w-test&t=x");
+await p3.fill("#repo-input", "FalkorDB/falkordb-py");
+await p3.click("#repo-load");
+await p3.waitForSelector("#app:not([hidden])", { timeout: 20000 });
+check(!(await p3.$(".partial-banner")), "complete load: no partial-data banner");
+check((await p3.textContent("#summary")).includes("not who understands it"), "complete load: the summary says Lore shows who worked on what, not who understands it");
+await p3.screenshot({ path: path.join(out, "full-1-loaded.png") });
+
+// Finding 1: an answer calling someone the only person who understands the repo.
+await p3.click("#suggestions .chip");
+await p3.waitForSelector(".answer:not(.pending)", { timeout: 20000 });
+const fullAnswer = await p3.textContent(".answer");
+const asks = await p3.evaluate(() => window.__annaCalls.filter(c => c[0] === "llm.complete").map(c => c[1]));
+check(/never say who understands/i.test(asks[0].systemPrompt), "complete load: the model's prompt carries the evidence rules");
+check(/^These sentences claim who understands/.test(asks.at(-1).messages.at(-1).content.text), "finding 1: Lore asks the model to restate the overclaim");
+check(!/only person|understands/.test(fullAnswer) && /authored/.test(fullAnswer) && !(await p3.$("#ask-out .caveat")), "finding 1: the answer shown says what the PRs show");
+await p3.screenshot({ path: path.join(out, "full-2-ask.png"), fullPage: true });
+
+// Finding 2: limited activity read as proof that nobody else understands an area.
+await p3.click('.tabs button[data-tab="risk"]');
+const fullRows = await p3.$$("#risk-out .risk > li");
+const rowText = await p3.$$eval("#risk-out .risk > li", els => els.map(e => e.textContent));
+const rowLinks = await p3.$$eval("#risk-out .risk > li", els => els.map(e => [...e.querySelectorAll(".risk-prs a[href*='/pull/']")].length));
+check(fullRows.length === 2, `complete load: Knowledge risk lists ${fullRows.length} areas`);
+check(rowText.every(t => !/only @|knows it well|nobody else does/.test(t) && /doesn't mean nobody else understands it/.test(t)), "finding 2: no row says 'only @x knows it'; each says what the history can't show");
+check(rowLinks.every(n => n === 3) && rowText.every(t => /3 merged PRs in the last six months \(Aug 13 – Oct 18, 2026\)/.test(t)), "finding 2: each row shows its 3 PRs as links, with the count and dates");
+check(rowText.every(t => ["@Naseem77", "@dudizimber", "@SantoshDhaladhuli", "@barakb", "@swilly22"].every(p => t.includes(p))), "finding 2: each row names everyone active on those PRs");
+await p3.screenshot({ path: path.join(out, "full-3-risk.png"), fullPage: true });
+
+await p3.click('.tabs button[data-tab="experts"]');
+await p3.click("#experts-out details summary");
+await p3.waitForSelector(".area-body .expert");
+check(/authored \d+.* of the PRs in this area; \d+ merged PRs touch it in the history Lore read/.test(await p3.textContent(".area-body")), "complete load: People by area says what each person did, in distinct PRs");
+await p3.screenshot({ path: path.join(out, "full-4-people.png"), fullPage: true });
+
+// Finding 3: a drafted reply that made a commitment on behalf of the project.
+await p3.click('.tabs button[data-tab="triage"]');
+await p3.click("#triage-go");
+await p3.waitForSelector(".draft", { timeout: 20000 });
+const draft = await p3.textContent(".draft");
+const tri = await p3.evaluate(() => window.__annaCalls.filter(c => c[0] === "llm.complete").map(c => c[1]).slice(-2));
+check(/No promises/.test(tri[0].messages[0].content.text) && !/as a maintainer would write it/.test(tri[0].messages[0].content.text), "finding 3: the triage prompt forbids promises and doesn't ask for a maintainer's voice");
+check(/^These sentences make a promise/m.test(tri[1].messages.at(-1).content.text), "finding 3: Lore asks the model to remove the promises");
+check(!/We'll fix|next release|will take a look/.test(draft) && !(await p3.$("#triage-out .promise")), "finding 3: the draft shown makes no promise");
+check((await p3.textContent("#triage-out")).includes("Draft for you to edit") && (await p3.textContent("#triage-out")).includes("doesn't speak for the project"), "finding 3: the draft is labelled as the user's to edit");
+await p3.screenshot({ path: path.join(out, "full-5-triage.png"), fullPage: true });
+await p3.close();
 
 check(errors.length === 0, "no page errors" + (errors.length ? ": " + errors.join(" | ") : ""));
 await browser.close();

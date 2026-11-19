@@ -3,12 +3,13 @@ import * as L from "./lore.js";
 const $ = sel => document.querySelector(sel);
 const EXAMPLES = ["pallets/flask", "encode/httpx", "FalkorDB/falkordb-py", "fastapi/typer"];
 const SUGGESTIONS = [
-  "Who knows the most about this project overall?",
+  "Who has been most active in this repo's history?",
   "I'm new here. Where should I start?",
-  "Which parts of the code depend on a single person?",
+  "Which areas have few people in their recent history?",
   "What changed recently, and who did it?",
 ];
 const FRESH_SECONDS = 24 * 3600;
+const RISK_HINT = "Areas with at least 3 merged PRs in the last six months where at most one active person has much public activity. Each row shows the PRs and everyone on them. Few people in an area's history doesn't mean nobody else understands it.";
 
 let anna = null;
 let graph = null;
@@ -39,7 +40,7 @@ async function complete({ systemPrompt, messages }) {
 }
 
 function llmMessage(e) {
-  if (e?.code === "quota_exceeded") return "Your Anna usage limit is reached for now, so Lore can't ask the model. The Experts and Knowledge risk tabs still work.";
+  if (e?.code === "quota_exceeded") return "Your Anna usage limit is reached for now, so Lore can't ask the model. The People by area and Knowledge risk tabs still work.";
   if (e?.code === "permission_denied") return "Lore isn't allowed to use the model in this install. Reinstall the app and allow model access.";
   return `The model call failed: ${e?.message || e}`;
 }
@@ -192,12 +193,11 @@ function renderRepo(snap) {
       <span><b>${o.prs}</b> PRs</span><span><b>${o.issues}</b> issues</span><span><b>${o.areas}</b> areas</span>
       <span class="muted">${esc(o.history_from)} → ${esc(o.history_to)} · loaded ${ago(snap.fetched_at)}</span>
       <button type="button" class="link" id="refresh">Refresh</button>
-    </div>${partialBanner()}`;
+    </div>
+    <p class="evidence-note">Lore sees public GitHub activity only. People also learn code by reading it, in chat and in private work, so Lore shows who has worked on what, not who understands it.</p>${partialBanner()}`;
   $("#summary").classList.toggle("has-partial", L.coverage(graph).partial);
   $("#refresh").addEventListener("click", () => loadRepo(graph.repo, { refresh: true }));
-  $("#risk-hint").textContent = L.coverage(graph).partial
-    ? "Areas with at least 3 merged PRs in the last six months that, in the data Lore fetched, at most one active person knows well. People whose work wasn't fetched don't show up here."
-    : "Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.";
+  $("#risk-hint").textContent = RISK_HINT + (L.coverage(graph).partial ? " People whose work Lore didn't fetch don't show up here." : "");
   $("#ask-out").innerHTML = "";
   $("#triage-out").innerHTML = "";
   chips($("#suggestions"), SUGGESTIONS, q => { $("#ask-input").value = q; ask(q); });
@@ -242,11 +242,18 @@ function partialBanner(lead = "") {
 }
 const partialBadge = () => (L.coverage(graph).partial ? ' <span class="partial-badge" title="Lore read only part of this repo\'s history">partial data</span>' : "");
 
-/** A note above a model-written text that states an absence as fact while the data is partial. */
+/** A note above a model-written text that still claims more than public activity shows, after Lore asked
+ *  the model once to rewrite it. Shown on every load, not only partial ones. */
 function caveatNote(caveats) {
   if (!caveats?.length) return "";
-  return `<div class="caveat" role="note"><strong>Read with care.</strong> This text states something as fact that partial data can't prove:
-    <ul>${caveats.slice(0, 3).map(c => `<li>“${esc(c)}”</li>`).join("")}</ul>People whose work Lore didn't fetch may know this code too.</div>`;
+  return `<div class="caveat" role="note"><strong>Read with care.</strong> This text says more than public activity can show:
+    <ul>${caveats.slice(0, 3).map(c => `<li>“${esc(c)}”</li>`).join("")}</ul>Lore sees who authored, reviewed and commented on PRs, not who understands the code.</div>`;
+}
+/** A note above a draft that still promises something on behalf of the project or the user. */
+function promiseNote(promised) {
+  if (!promised?.length) return "";
+  return `<div class="caveat promise" role="note"><strong>Before you post.</strong> This draft still makes a promise that isn't Lore's, or maybe yours, to make:
+    <ul>${promised.slice(0, 3).map(c => `<li>“${esc(c)}”</li>`).join("")}</ul>Edit or remove it unless you can stand behind it.</div>`;
 }
 
 function renderExperts() {
@@ -266,29 +273,23 @@ function renderExperts() {
       if (!d.open || body.dataset.done) return;
       body.dataset.done = "1";
       body.innerHTML = L.whoKnows(graph, [body.dataset.area]).map(p => `
-        <div class="expert">${person(p.login)} <span class="muted">score ${p.score} · ${p.authored} merged, ${p.reviewed} reviewed, ${p.commented} commented · last ${esc(p.last_at)}${p.active ? "" : " · inactive"}</span>
+        <div class="expert">${person(p.login)} <span class="muted">${esc(p.basis)} · score ${p.score}${p.active ? "" : " · inactive"}</span>
         ${evidenceList(p.evidence)}</div>`).join("");
     });
   }
 }
 
+/** Each row: what the PRs show, in words, with the PRs themselves right under it. */
 function renderRisk() {
   const rows = L.knowledgeRisk(graph);
   const partial = L.coverage(graph).partial;
-  const verdict = r => {
-    if (partial) {
-      return r.knowers.length
-        ? `Based on fetched data, only ${person(r.knowers[0])} knows it well`
-        : "Based on fetched data, no active person knows it well";
-    }
-    return r.knowers.length ? "only " + person(r.knowers[0]) + " knows it well" : "<strong>no active person</strong> knows it well";
-  };
+  const prList = r => `<ul class="risk-prs">${r.prs.map(p => `<li>${itemLink(p.id)} ${esc(p.title)} <span class="muted">· merged ${esc(L.span(Date.parse(p.merged_at) / 1000, Date.parse(p.merged_at) / 1000))} · by ${person(p.author)}${p.reviewers.length ? ` · reviewed by ${p.reviewers.map(person).join(", ")}` : ""}</span></li>`).join("")}</ul>`;
   $("#risk-out").classList.toggle("partial-list", partial);
-  $("#risk-out").innerHTML = partialBanner("An area listed here may have more people who know it than Lore has seen, so don't read this as the project's bus factor.") + (rows.length
-    ? `<ul class="risk">${rows.map(r => `<li><code>${esc(r.area)}</code> · ${r.recent_prs} merged PRs ${partial ? "fetched from the last" : "in"} six months · ${verdict(r)}${partialBadge()}</li>`).join("")}</ul>`
-    : partial
-      ? `<p class="muted">In the fetched data, no area with recent work depends on a single active person. With partial data, that isn't a clean bill of health.</p>`
-      : `<p class="muted">No area with recent work depends on a single active person. Good news.</p>`);
+  $("#risk-out").innerHTML = partialBanner("An area listed here may have more people working on it than Lore has seen.") + (rows.length
+    ? `<ul class="risk">${rows.map(r => `<li><div class="risk-head"><code>${esc(r.area)}</code>${partialBadge()}</div>
+        <div class="risk-text">${md(L.riskText(r))}</div>
+        <div class="risk-evidence"><span class="muted small">The ${r.prs.length === 1 ? "PR" : `${r.prs.length} PRs`} behind this:</span>${prList(r)}</div></li>`).join("")}</ul>`
+    : `<p class="muted">No area with recent work has its public activity concentrated on one active person${partial ? " in the data Lore fetched. With partial data, that says little either way" : ""}.</p>`);
 }
 
 function renderTriageOptions() {
@@ -330,7 +331,7 @@ async function ask(question) {
       answer.innerHTML = `<p class="warn">Lore couldn't finish this one. Try asking it more simply.</p>`;
     } else {
       out.querySelector(".hood").open = false;
-      answer.insertAdjacentHTML("beforebegin", partialBanner("This answer was written from that data.") + caveatNote(res.caveats));
+      answer.insertAdjacentHTML("beforebegin", partialBanner("This answer was written from that data.") + caveatNote(res.caveats) + promiseNote(res.commitments));
       answer.innerHTML = md(res.text) + (res.evidence.items.length
         ? `<div class="sources"><span class="muted">Looked at:</span> ${res.evidence.items.slice(0, 12).map(i => itemLink(i.id)).join(" ")}</div>` : "");
     }
@@ -357,12 +358,13 @@ async function runTriage(id) {
       <h3>${itemLink(r.issue.id)} ${esc(r.issue.title)}</h3>
       <div class="grid">
         <div><h4>Areas it's about</h4>${r.areas.length ? `<ul>${r.areas.map(a => `<li><code>${esc(a.area)}</code> <span class="muted">${esc(a.reasons.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">No area stands out.</p>`}</div>
-        <div><h4>Who knows it${partialBadge()}</h4>${r.reviewers.length ? r.reviewers.map(p => `<div class="expert">${person(p.login)} <span class="muted">score ${p.score}</span>${evidenceList(p.evidence)}</div>`).join("") : `<p class="muted">Nobody active stands out.</p>`}</div>
+        <div><h4>Who has worked on it${partialBadge()}</h4>${r.reviewers.length ? r.reviewers.map(p => `<div class="expert">${person(p.login)} <span class="muted">${esc(p.basis)}</span>${evidenceList(p.evidence)}</div>`).join("") : `<p class="muted">No active person stands out in this area's history.</p>`}</div>
       </div>
       <h4>Related past work</h4>
       ${r.related.length ? `<ul>${r.related.map(x => `<li>${itemLink(x.id)} ${esc(x.title)} <span class="muted">${esc(x.why.join("; "))}</span></li>`).join("")}</ul>` : `<p class="muted">Nothing related in the last 12 months.</p>`}
-      <h4>Drafted reply <span class="muted small">(not posted)</span></h4>
-      ${caveatNote(r.caveats)}<div class="draft">${md(r.draft)}</div>
+      <h4>Draft for you to edit</h4>
+      <p class="muted small draft-label">Lore doesn't post anything, and this draft doesn't speak for the project. Check it and change it before you use it.</p>
+      ${promiseNote(r.commitments)}${caveatNote(r.caveats)}<div class="draft">${md(r.draft)}</div>
       <button type="button" class="link" id="copy-draft">Copy draft</button>`;
     $("#copy-draft").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(r.draft); $("#copy-draft").textContent = "Copied"; } catch { $("#copy-draft").textContent = "Select the text to copy it"; }

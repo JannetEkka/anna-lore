@@ -282,6 +282,7 @@ export function buildGraph(snap, now = Math.floor(Date.now() / 1000)) {
     comments: new Map(),  // itemId -> Map(login -> {count, at})
     fixedBy: new Map(),   // issueId -> Set(prId)
     knows: new Map(),     // areaPath -> Map(login -> {score, authored, reviewed, commented, last_at})
+    roles: new Map(),     // prId -> Map(login -> Set("authored" | "reviewed" | "commented")), for PRs with known files
   };
   const seen = (login, at) => {
     if (!login) return;
@@ -347,12 +348,23 @@ export function buildGraph(snap, now = Math.floor(Date.now() / 1000)) {
     k.last_at = Math.max(k.last_at, at);
     g.knows.get(area).set(login, k);
   };
+  const role = (prId, login, kind) => {
+    if (!g.roles.has(prId)) g.roles.set(prId, new Map());
+    const r = g.roles.get(prId);
+    if (!r.has(login)) r.set(login, new Set());
+    r.get(login).add(kind);
+  };
   for (const pr of g.items.values()) {
     if (pr.kind !== "PR" || !pr.areas.size) continue;
     const touched = [...pr.areas];
-    if (pr.merged_at) for (const a of touched) add(pr.author, a, "authored", CONFIG.W_AUTHOR, pr.merged_at);
+    if (pr.merged_at) {
+      for (const a of touched) add(pr.author, a, "authored", CONFIG.W_AUTHOR, pr.merged_at);
+      role(pr.id, pr.author, "authored");
+    }
     for (const [login, r] of g.reviews.get(pr.id) || []) {
-      if (login !== pr.author) for (const a of touched) add(login, a, "reviewed", CONFIG.W_REVIEW, r.at);
+      if (login === pr.author) continue;
+      for (const a of touched) add(login, a, "reviewed", CONFIG.W_REVIEW, r.at);
+      role(pr.id, login, "reviewed");
     }
     // Comments on the PR itself, and on issues it fixed.
     const commentSources = [pr.id, ...(pr.state === "merged" ? pr.fixes : [])];
@@ -362,7 +374,10 @@ export function buildGraph(snap, now = Math.floor(Date.now() / 1000)) {
         if (login !== pr.author) commenters.set(login, Math.max(commenters.get(login) || 0, c.at));
       }
     }
-    for (const [login, at] of commenters) for (const a of touched) add(login, a, "commented", CONFIG.W_COMMENT, at);
+    for (const [login, at] of commenters) {
+      for (const a of touched) add(login, a, "commented", CONFIG.W_COMMENT, at);
+      role(pr.id, login, "commented");
+    }
   }
   return g;
 }
@@ -415,36 +430,78 @@ export function dataNote(g, { draft = false } = {}) {
   if (!c.partial) return "";
   return `The data is PARTIAL: ${c.headline}. ${c.detail}
 People and pull requests that were not fetched are invisible to you, so nothing here proves an absence.
-- Start any statement about who knows an area, bus factor or knowledge risk with "Based on the fetched data".
+- Start any statement about who has worked on an area, or about knowledge risk, with "Based on the fetched data".
 - Never state as fact that only one person knows something, that nobody else does, or that an area has a bus factor of one. Say what the fetched data shows and that the full history may show more people.
 - ${draft
     ? "In the reply, say the people named know this area well in the history Lore read; never call anyone the only one."
     : `Say once, briefly, that the answer rests on partial data (${c.headline}).`}`;
 }
 
-const HEDGE_RE = /\b(fetched|partial|loaded|available|incomplete)\s+(data|history)\b|\bdata\s+(is|was)\s+(partial|incomplete)\b|\bmay\s+(show|be|have)\b|\bappears?\b/i;
-const ABSOLUTE_RES = [
-  /\bonly\s+(?:\*\*)?@?[\w-]+(?:\*\*)?\s+(?:really\s+|actively\s+|currently\s+)?(?:knows?|maintains?|understands?|works?\s+on|owns?|reviews?|touche[sd]|has)\b/i,
-  /\b(?:the\s+)?only\s+(?:one\s+)?(?:active\s+)?(?:person|maintainer|contributor|expert|developer|reviewer|one)\b/i,
-  /\b(?:nobody|no\s+one|no\s+other\s+\w+|none\s+of\s+the\s+others?)\s+(?:else\s+)?(?:knows?|maintains?|understands?|works?|has|is|reviews?|owns?)\b/i,
-  /\b(?:nobody|no\s+one)\s+else\b/i,
-  /\bsole(?:ly)?\s+(?:\w+\s+)?(?:maintainer|expert|owner|contributor|author|responsible|maintained|owned)\b/i,
-  /\bsingle\s+point\s+of\s+failure\b/i,
-  /\bbus\s+factor\s+(?:of|is|=|:)\s*(?:one|1)\b/i,
-  /\b(?:depends?|relies|rely|dependent)\s+(?:entirely|solely|completely|only)\s+on\b/i,
-];
+/** The rule every prompt carries, partial data or not (Anna's App Review, Nov 17). Public GitHub activity is
+ *  always partial evidence of who understands code: people also learn it by reading, in chat, in private work. */
+export const EVIDENCE_RULES = `Lore sees public GitHub activity only: who authored, reviewed and commented on which pull requests. That is evidence of who has worked on the code, not of who understands it.
+- Describe what the history shows, with counts, dates and citations: "@x authored 5 and reviewed 3 of the 9 merged PRs touching src/planner since 2026-03-02 [repo#12]".
+- Never say who understands or knows the code, and never say who doesn't. No "only @x knows", "the only person who understands", "nobody else", "sole maintainer", "bus factor", "single point of failure", "go-to person", "expert".
+- Few people in an area's history is not proof that nobody else understands it. Say so if it matters.`;
 
-/** Sentences in a model's text that state an absence or a bus factor as fact, without saying the data is
- *  partial. Returns [] when the data is complete or every such sentence is hedged. */
-export function absoluteClaims(g, text) {
-  if (!coverage(g).partial) return [];
+const strip = s => s.replace(/^[\s>*-]+/, "").trim();
+const sentences = text => String(text || "").split(/(?<=[.!?])\s+|\n+/).map(strip).filter(Boolean);
+const clip = s => (s.length > 160 ? s.slice(0, 157) + "…" : s);
+// "It doesn't mean nobody else understands it" is the caveat we want, not a claim: drop such clauses before checking.
+const NEGATED_RE = /\b(?:doesn't|does\s+not|don't|do\s+not|isn't|is\s+not|aren't|are\s+not)\s+(?:mean|prove|show|proof|imply)\b.*$/i;
+// "nobody else has a merged PR here" describes the record; "nobody else knows it" claims about people.
+const RECORD_RE = /\b(?:PRs?|pull\s+requests?|history|record|data|activity|appears?|shows?\s+up|commits?|reviews?)\b/i;
+const KNOW = "(?:knows?|understands?|maintains?|owns?|gets|is\\s+familiar|is\\s+an?\\s+expert)";
+const OVERCLAIM_RES = [
+  new RegExp(`\\bonly\\s+(?:\\*\\*)?@?[\\w-]+(?:\\*\\*)?\\s+(?:really\\s+|actively\\s+|currently\\s+|truly\\s+|fully\\s+)?${KNOW}`, "i"),
+  /\b(?:the\s+)?only\s+(?:one\s+)?(?:active\s+)?(?:person|people|maintainer|contributor|expert|developer|reviewer|one)\b/i,
+  new RegExp(`\\b(?:nobody|no\\s+one|no\\s+other\\s+\\w+|none\\s+of\\s+the\\s+others?)\\s+(?:else\\s+)?(?:really\\s+)?${KNOW}`, "i"),
+  /\bsole(?:ly)?\s+(?:\w+\s+)?(?:maintainer|expert|owner|contributor|author|responsible|maintained|owned|person)\b/i,
+  /\bsingle\s+point\s+of\s+failure\b/i,
+  /\bbus\s+factor\b/i,
+  /\b(?:depends?|relies|rely|dependent)\s+(?:entirely|solely|completely|only|wholly)\s+on\b/i,
+  /\b(?:broadly|deeply|fully|really|truly|best)\s+understands?\b/i,
+  /\bunderstands?\s+(?:the\s+)?(?:whole|entire|overall|full)\b/i,
+  /\bknows?\s+(?:the\s+)?(?:whole|entire|overall)\s+(?:repo|repository|codebase|project|code)\b/i,
+  /\bknows?\s+(?:[\w`/.*-]+\s+){0,4}(?:best|well|inside\s+out|most\s+about)\b/i,
+  /\b(?:the\s+)?(?:go-to|key)\s+(?:person|expert|maintainer)\b/i,
+  /\b(?:the|an?|our)\s+(?:main\s+|top\s+|resident\s+)?expert\s+(?:on|in|for)\b/i,
+  /\bif\s+(?:@?[\w-]+|that\s+person|they|he|she)\s+(?:leaves?|left|goes|steps\s+away)\b/i,
+];
+// Absences that are fine when they describe the record: "no one else has a merged PR in this area".
+const ABSENCE_RE = /\b(?:nobody|no\s+one)\s+else\b/i;
+
+/** Sentences that claim who understands the code (or who doesn't), beyond what public activity shows.
+ *  Runs on every answer and draft, partial data or not. */
+export function overclaims(text) {
   const found = [];
-  for (const raw of String(text || "").split(/(?<=[.!?])\s+|\n+/)) {
-    const sentence = raw.replace(/^[\s>*-]+/, "").trim();
-    if (!sentence || HEDGE_RE.test(sentence)) continue;
-    if (ABSOLUTE_RES.some(re => re.test(sentence))) found.push(sentence.length > 160 ? sentence.slice(0, 157) + "…" : sentence);
+  for (const sentence of sentences(text)) {
+    const s = sentence.replace(NEGATED_RE, "");
+    if (OVERCLAIM_RES.some(re => re.test(s)) || (ABSENCE_RE.test(s) && !RECORD_RE.test(s))) found.push(clip(sentence));
   }
   return found;
+}
+/** Kept for v0.1.1's callers: the check no longer depends on the data being partial. */
+export const absoluteClaims = (g, text) => overclaims(text);
+
+const DAYS = "(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|tonight|today)";
+const COMMITMENT_RES = [
+  /\bwe(?:'ll|\s+will|\s+shall|'re\s+going\s+to|\s+are\s+going\s+to|\s+plan\s+to|\s+intend\s+to|'re\s+working\s+on|\s+are\s+working\s+on)\b/i,
+  /\bI(?:'ll|\s+will|'m\s+going\s+to|\s+am\s+going\s+to|'m\s+working\s+on|\s+am\s+working\s+on)\b/,
+  /\bwill\s+(?:be\s+)?(?:fixed|addressed|resolved|merged|released|included|shipped|patched|looked\s+at|reviewed|prioriti[sz]ed|handled|picked\s+up)\b/i,
+  /\b(?:will|should|is\s+going\s+to|is\s+expected\s+to)\s+(?:land|ship|go\s+out|be\s+(?:in|out|part\s+of|available))\b/i,
+  /\b(?:in|for|by|with)\s+the\s+(?:next|upcoming|coming|following)\s+(?:release|version|sprint|minor|major|patch|milestone)\b/i,
+  new RegExp(`\\b(?:by|before|on|until|next)\\s+${DAYS}\\b|\\b(?:this|next)\\s+(?:week|month|sprint)\\b|\\bwithin\\s+(?:a|an|\\d+)\\s+(?:hours?|days?|weeks?)\\b|\\bby\\s+(?:the\\s+)?end\\s+of\\b`, "i"),
+  /@[\w-]+\s+(?:will|can|is\s+going\s+to|'ll|should\s+be\s+able\s+to)\s+(?:take|look|review|handle|fix|pick|work|help|investigate|check)\b/i,
+  /\bassign(?:ed|ing)?\s+(?:this\s+|it\s+)?to\b|\b(?:I|we)(?:'ve|\s+have)\s+assigned\b/i,
+  /\b(?:a|the)\s+(?:fix|patch)\s+is\s+(?:on\s+(?:its|the)\s+way|coming|in\s+progress|planned|underway)\b/i,
+  /\b(?:on\s+(?:our|the)\s+roadmap|(?:has\s+been|is)\s+prioriti[sz]ed|(?:high|top)\s+priority\s+for\s+us)\b/i,
+];
+
+/** Sentences in a drafted reply that promise something on behalf of the project or the user: fixes,
+ *  releases, dates, or someone taking the issue. Lore can't make those promises; only the user can. */
+export function commitments(text) {
+  return sentences(text).filter(s => COMMITMENT_RES.some(re => re.test(s))).map(clip);
 }
 
 export function projectOverview(g) {
@@ -476,6 +533,49 @@ export function findAreas(g, text, limit = 8) {
   return out.sort((x, y) => y.prs - x.prs).slice(0, limit);
 }
 
+const MONTH = { month: "short", day: "numeric", timeZone: "UTC" };
+/** "Aug 13 – Oct 18, 2026", or "Dec 7, 2025 – Oct 25, 2026" across a year. */
+export function span(from, to) {
+  if (!from || !to) return "";
+  const a = new Date(from * 1000), b = new Date(to * 1000);
+  const year = d => d.getUTCFullYear();
+  const day = (d, withYear) => d.toLocaleDateString("en-US", withYear ? { ...MONTH, year: "numeric" } : MONTH);
+  if (iso(from) === iso(to)) return day(b, true);
+  return `${day(a, year(a) !== year(b))} – ${day(b, true)}`;
+}
+
+/** Each person's distinct PRs in the given areas, by role: a PR that touches three areas counts once. */
+function activityIn(g, areas, filter = () => true) {
+  const people = new Map();
+  const prs = [];
+  for (const item of g.items.values()) {
+    if (item.kind !== "PR" || ![...item.areas].some(a => areas.has(a)) || !filter(item)) continue;
+    if (item.merged_at) prs.push(item);
+    for (const [login, kinds] of g.roles.get(item.id) || []) {
+      const p = people.get(login) || { login, authored: [], reviewed: [], commented: [], first: Infinity, last: 0 };
+      const at = item.merged_at || item.created_at;
+      for (const k of kinds) p[k].push(item.id);
+      p.first = Math.min(p.first, at); p.last = Math.max(p.last, at);
+      people.set(login, p);
+    }
+  }
+  return { people, prs };
+}
+
+const num = id => "#" + id.split("#")[1];
+const nums = ids => ids.map(num);
+const list = xs => (xs.length <= 2 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
+/** "authored #267 and reviewed #276", or with counts when there are many: "authored 19 and reviewed 2 PRs". */
+function roles(p, { ids = true } = {}) {
+  const parts = [];
+  for (const [k, verb] of [["authored", "authored"], ["reviewed", "reviewed"], ["commented", "commented on"]]) {
+    const xs = p[k] || [];
+    if (!xs.length) continue;
+    parts.push(ids && xs.length <= 3 ? `${verb} ${list(nums(xs))}` : `${verb} ${xs.length}`);
+  }
+  return list(parts);
+}
+
 function evidence(g, login, areas, limit = 3) {
   const out = [];
   for (const item of g.items.values()) {
@@ -500,11 +600,27 @@ export function whoKnows(g, areaIds, { activeOnly = false, limit = 5, exclude = 
       totals.set(login, t);
     }
   }
+  // The score sums over areas (a ranking), but the counts are distinct PRs: in v0.1.1 a PR touching three
+  // areas counted three times, so one person could seem to have authored more PRs than the repo has.
+  const { people, prs } = activityIn(g, areas);
+  const merged = prs.length;
+  const range = span(Math.min(...prs.map(p => p.merged_at)), Math.max(...prs.map(p => p.merged_at)));
   return [...totals.values()]
     .filter(t => !exclude.includes(t.login) && (!activeOnly || g.people.get(t.login)?.active))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(t => ({ ...t, score: +t.score.toFixed(2), last_at: iso(t.last_at), active: !!g.people.get(t.login)?.active, evidence: evidence(g, t.login, areas) }));
+    .map(t => {
+      const p = people.get(t.login) || { authored: [], reviewed: [], commented: [], first: 0, last: 0 };
+      const done = roles(p, { ids: false });
+      return {
+        login: t.login, score: +t.score.toFixed(2), areas: t.areas,
+        authored: p.authored.length, reviewed: p.reviewed.length, commented: p.commented.length,
+        area_merged_prs: merged, first_at: iso(p.first === Infinity ? 0 : p.first), last_at: iso(t.last_at),
+        active: !!g.people.get(t.login)?.active,
+        basis: done ? `${done} of the PRs in ${t.areas.length === 1 ? "this area" : "these areas"}; ${plural(merged, "merged PR")} touch ${t.areas.length === 1 ? "it" : "them"} in the history Lore read${range ? ` (${range})` : ""}` : "",
+        evidence: evidence(g, t.login, areas),
+      };
+    });
 }
 
 export function resolveItem(g, ref) {
@@ -641,7 +757,9 @@ export function suggestReviewers(g, issueId, limit = 3) {
 
 const NOT_KNOWLEDGE = new Set(["images", "img", "assets", "static", "_includes", ".github", "public", "fonts", ROOT]);
 
-/** Areas with recent work that at most one active person knows well. */
+/** Areas with recent work where at most one active person has much public activity (a score of 1.0, about
+ *  one recent merged PR). Each row carries the recent merged PRs and everyone on them, so the claim can be
+ *  checked: few people in an area's history is not proof that nobody else understands it. */
 export function knowledgeRisk(g, { days = 180, minPrs = 3, minScore = 1.0 } = {}) {
   const since = g.now - days * DAY;
   const out = [];
@@ -653,9 +771,41 @@ export function knowledgeRisk(g, { days = 180, minPrs = 3, minScore = 1.0 } = {}
       .filter(([login, k]) => g.people.get(login)?.active && k.score >= minScore)
       .sort((x, y) => y[1].score - x[1].score)
       .map(([login]) => login);
-    if (knowers.length <= 1) out.push({ area: a.path, recent_prs: recent, knowers });
+    if (knowers.length > 1) continue;
+    const { people, prs } = activityIn(g, new Set([a.path]), i => (i.merged_at || 0) >= since);
+    prs.sort((x, y) => y.merged_at - x.merged_at);
+    const weight = p => p.authored.length * 3 + p.reviewed.length * 2 + p.commented.length;
+    out.push({
+      area: a.path, recent_prs: recent, knowers,
+      from: iso(Math.min(...prs.map(p => p.merged_at))), to: iso(Math.max(...prs.map(p => p.merged_at))),
+      span: span(Math.min(...prs.map(p => p.merged_at)), Math.max(...prs.map(p => p.merged_at))),
+      prs: prs.map(p => ({
+        ...brief(p), author: p.author, merged_at: iso(p.merged_at),
+        reviewers: [...(g.roles.get(p.id) || [])].filter(([, k]) => k.has("reviewed")).map(([l]) => l),
+      })),
+      people: [...people.values()]
+        .sort((x, y) => (knowers.includes(y.login) - knowers.includes(x.login)) || weight(y) - weight(x) || x.login.localeCompare(y.login))
+        .map(p => ({ login: p.login, active: !!g.people.get(p.login)?.active, authored: p.authored, reviewed: p.reviewed, commented: p.commented })),
+    });
   }
   return out.sort((x, y) => y.recent_prs - x.recent_prs);
+}
+
+/** A Knowledge-risk row in words: what the PRs show, never who understands the area. */
+export function riskText(row) {
+  const lead = `${plural(row.recent_prs, "merged PR")} in the last six months${row.span ? ` (${row.span})` : ""}.`;
+  const active = row.people.filter(p => p.active);
+  const inactive = row.people.length - active.length;
+  const top = active.find(p => row.knowers.includes(p.login));
+  const others = active.filter(p => p !== top);
+  const who = top
+    ? `@${top.login} has the most activity here: ${roles(top)}.`
+    : "No active person has more than a little activity here.";
+  const rest = others.length
+    ? `${others.length === 1 ? "1 other active person appears" : `${others.length} other active people appear`} on these PRs: ${list(others.map(p => `@${p.login} (${roles(p)})`))}.`
+    : "No other active person appears on these PRs.";
+  const gone = inactive ? ` ${inactive === 1 ? "1 person" : `${inactive} people`} on them had no activity in the last ${CONFIG.ACTIVE_DAYS} days.` : "";
+  return `${lead} ${who} ${rest}${gone} That's what the public history shows. It doesn't mean nobody else understands it.`;
 }
 
 const BEGINNER = ["good first issue", "good-first-issue", "help wanted", "beginner", "easy", "first-timers-only", "starter"];
@@ -696,12 +846,12 @@ export function areaDirectory(g, limit = 30) {
 export const TOOLS = [
   { name: "project_overview", args: "{}", description: "The repo as a whole: people, active people, PRs, issues, areas, time span." },
   { name: "find_areas", args: '{"text": string}', description: "Areas of the code (directories) whose path or files mention the words. Turns a topic into area ids." },
-  { name: "who_knows", args: '{"area_ids": string[], "active_only"?: boolean}', description: "People ranked by how well they know the given areas (merged PRs, reviews, comments, recent counts more), with the PRs that prove it." },
+  { name: "who_knows", args: '{"area_ids": string[], "active_only"?: boolean}', description: "People ranked by public activity in the given areas (merged PRs, reviews, comments; recent counts more). Each has distinct PR counts, a `basis` sentence you can reuse, and the PRs behind it. Activity, not proof of understanding." },
   { name: "get_item", args: '{"ref": string}', description: "One issue or PR: title, description, state, author, labels, areas. Accepts '#12' or '12'." },
   { name: "search_history", args: '{"text": string}', description: "Search PR and issue titles and descriptions: where something was discussed or decided." },
   { name: "related", args: '{"issue_ref": string}', description: "Past issues and PRs related to an issue, each with the reason, plus the areas the issue is about." },
   { name: "suggest_reviewers", args: '{"issue_ref": string}', description: "Active people who know an issue's areas best (never its author), with evidence." },
-  { name: "knowledge_risk", args: "{}", description: "Areas with recent work that at most one active person knows well (bus factor of one)." },
+  { name: "knowledge_risk", args: "{}", description: "Areas with recent work where at most one active person has much public activity, each with its recent merged PRs and everyone on them. Few people in the history is not proof nobody else understands an area." },
   { name: "good_first_issues", args: '{"area_ids"?: string[]}', description: "Open beginner-friendly issues, closest to the given areas first." },
 ];
 
@@ -738,12 +888,23 @@ ${TOOLS.map(t => `- ${t.name} ${t.args}: ${t.description}`).join("\n")}
 Rules:
 - Answer only from tool results. Never invent people, PRs, issues, dates or reasons.
 - Cite a source for every person, claim or decision as [${g.repo}#123]. Write people as @login.
-- Who knows something: find_areas to turn the topic into area ids, then who_knows with those ids.
+- Who has worked on something: find_areas to turn the topic into area ids, then who_knows with those ids.
 - Why something is the way it is: search_history, then get_item on the best one or two, then explain with citations.
-- About an issue: get_item, then related and suggest_reviewers. You only draft; nothing is posted anywhere.
+- About an issue: get_item, then related and suggest_reviewers. You only draft; nothing is posted anywhere. Never promise a fix, a release or a date, and never say someone will take it.
 - Where to start / first contribution: find_areas for the interest, good_first_issues with those ids, then who_knows.
 - If the history does not hold the answer, say so plainly and say what you looked for.
-- Keep answers short: a few sentences or a short list.${dataNote(g) ? "\n\n" + dataNote(g) : ""}`;
+- Keep answers short: a few sentences or a short list.
+
+${EVIDENCE_RULES}${dataNote(g) ? "\n\n" + dataNote(g) : ""}`;
+}
+
+/** The one follow-up Lore sends when a text breaks the rules: the sentences, and what to do instead. */
+function rewriteRequest(over, promised, { json }) {
+  const lines = [];
+  if (over.length) lines.push(`These sentences claim who understands the code, or who doesn't, which public activity can't show:\n${over.map(s => `- "${s}"`).join("\n")}\nRestate them as what the PRs show (who authored, reviewed or commented on which PRs, with counts and citations).`);
+  if (promised.length) lines.push(`These sentences make a promise on behalf of the project or the user:\n${promised.map(s => `- "${s}"`).join("\n")}\nRemove the promise. No fixes, releases, dates, or anyone taking the issue; the user decides those.`);
+  lines.push(json ? 'Keep everything else. Reply with {"answer": "<markdown>"} only.' : "Keep everything else. Reply with the full revised draft only.");
+  return lines.join("\n\n");
 }
 
 /** Pull the first JSON object out of a model reply (tolerates code fences and chatter). */
@@ -794,11 +955,24 @@ function collectEvidence(result, out) {
 export async function runAgent(g, question, { complete, onEvent = () => {}, maxSteps = 7 }) {
   const messages = [{ role: "user", content: question }];
   const evidence = { items: new Map(), people: new Set() };
-  const finish = text => {
+  const finish = async text => {
+    // Every answer is checked, partial data or not. One rewrite is asked for; what still fails is quoted.
+    let over = overclaims(text), promised = commitments(text), rewritten = false;
+    if (over.length || promised.length) {
+      messages.push({ role: "assistant", content: JSON.stringify({ answer: text }) });
+      messages.push({ role: "user", content: rewriteRequest(over, promised, { json: true }) });
+      const step = parseStep(await complete({ systemPrompt: systemPrompt(g), messages }));
+      if (typeof step?.answer === "string" && step.answer.trim()) {
+        text = step.answer.trim();
+        rewritten = true;
+        over = overclaims(text);
+        promised = commitments(text);
+      }
+    }
     const ev = { items: [...evidence.items.values()], people: [...evidence.people] };
-    const caveats = absoluteClaims(g, text);
-    onEvent({ type: "answer", text, evidence: ev, caveats });
-    return { text, evidence: ev, caveats };
+    const caveats = over, res = { text, evidence: ev, caveats, commitments: promised, rewritten };
+    onEvent({ type: "answer", ...res });
+    return res;
   };
   const reminder = coverage(g).partial ? `\n\nReminder: the data is partial (${coverage(g).headline}). Say "based on the fetched data"; do not state absences or a bus factor as fact.` : "";
   for (let stepNo = 0; stepNo < maxSteps; stepNo++) {
@@ -808,7 +982,7 @@ export async function runAgent(g, question, { complete, onEvent = () => {}, maxS
       onEvent({ type: "error", message: "The model returned an empty reply." });
       return null;
     }
-    if (typeof step.answer === "string") return finish(step.answer.trim());
+    if (typeof step.answer === "string") return await finish(step.answer.trim());
     const args = step.args && typeof step.args === "object" ? step.args : {};
     onEvent({ type: "call", tool: step.tool, args });
     let result;
@@ -836,15 +1010,28 @@ export async function triage(g, issueRef, { complete }) {
   if (!issue || issue.kind !== "Issue") return { error: "That issue isn't in the loaded history." };
   const rel = related(g, id);
   const rev = suggestReviewers(g, id);
-  const prompt = `Draft a short, friendly first reply to this GitHub issue, as a maintainer would write it.
-Point to the related past issues/PRs that matter, as [${g.repo}#n], and say who knows this area best as @login with why.
-Do not promise fixes or dates. Do not invent anything not in the data. Under 120 words. Plain markdown.
+  const prompt = `Draft a short, friendly first reply to this GitHub issue. It is a draft for the person using Lore to edit and post themselves, if they want to. They may not be a maintainer, so it must not speak for the project.
+Point to the related past issues/PRs that matter, as [${g.repo}#n]. You may mention people as having worked on those PRs ("@x authored [${g.repo}#n], which changed the same code"), never as knowing the area best.
+No promises: no "we will", no fix, release, version or date, no one "will look at this", no assignments. Do not invent anything not in the data. Under 120 words. Plain markdown.
+${EVIDENCE_RULES}
 ${dataNote(g) ? "\n" + dataNote(g, { draft: true }) + "\n" : ""}
 Issue: ${JSON.stringify(getItem(g, id))}
 Related: ${JSON.stringify(rel.related)}
 Areas: ${JSON.stringify(rel.areas)}
-People who know these areas: ${JSON.stringify(rev.reviewers.map(r => ({ login: r.login, score: r.score, evidence: r.evidence })))}`;
-  const draft = await complete({ systemPrompt: `You help maintainers of ${g.repo} triage issues. You only draft; nothing is posted.`, messages: [{ role: "user", content: prompt }] });
-  const text = String(draft || "").trim();
-  return { issue: getItem(g, id), related: rel.related, areas: rel.areas, reviewers: rev.reviewers, draft: text, caveats: absoluteClaims(g, text) };
+People active in these areas: ${JSON.stringify(rev.reviewers.map(r => ({ login: r.login, basis: r.basis, evidence: r.evidence })))}`;
+  const system = `You help people triage issues in ${g.repo}. You only draft; nothing is posted, and the draft makes no promises for anyone.`;
+  const messages = [{ role: "user", content: prompt }];
+  let text = String((await complete({ systemPrompt: system, messages })) || "").trim();
+  let over = overclaims(text), promised = commitments(text), rewritten = false;
+  if (over.length || promised.length) {
+    messages.push({ role: "assistant", content: text }, { role: "user", content: rewriteRequest(over, promised, { json: false }) });
+    const again = String((await complete({ systemPrompt: system, messages })) || "").trim();
+    if (again) {
+      text = again;
+      rewritten = true;
+      over = overclaims(text);
+      promised = commitments(text);
+    }
+  }
+  return { issue: getItem(g, id), related: rel.related, areas: rel.areas, reviewers: rev.reviewers, draft: text, caveats: over, commitments: promised, rewritten };
 }
