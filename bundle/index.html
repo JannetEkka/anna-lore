@@ -12,7 +12,7 @@
       <img src="./icon.svg" alt="" width="28" height="28" />
       <div>
         <h1>Lore</h1>
-        <p class="tag">Who knows what in a GitHub repo, with the PRs to prove it</p>
+        <p class="tag">Who has worked on what in a GitHub repo, with the PRs behind it</p>
       </div>
     </div>
     <form id="repo-form" class="repo-form" autocomplete="off">
@@ -23,7 +23,7 @@
 
   <section id="start" class="start">
     <h2>Point Lore at any public GitHub repo</h2>
-    <p>Lore reads the last 12 months of pull requests, reviews, issues and comments, works out which people know which parts of the code, and answers questions from that history. Every answer cites the PRs and issues behind it.</p>
+    <p>Lore reads the last 12 months of pull requests, reviews, issues and comments, shows who has worked on which parts of the code, and answers questions from that history. Every answer cites the PRs and issues behind it. Public activity shows who worked on something, not who understands it, and Lore says it that way.</p>
     <div class="chips" id="examples"></div>
     <div id="recent-wrap" hidden>
       <h3>Loaded before</h3>
@@ -45,14 +45,14 @@
     <div class="summary" id="summary"></div>
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="ask" aria-selected="true">Ask</button>
-      <button role="tab" data-tab="experts">Experts</button>
+      <button role="tab" data-tab="experts">People by area</button>
       <button role="tab" data-tab="triage">Triage an issue</button>
       <button role="tab" data-tab="risk">Knowledge risk</button>
     </nav>
 
     <section class="panel" data-panel="ask">
       <form id="ask-form" class="ask-form">
-        <textarea id="ask-input" rows="2" placeholder="Who knows the query planner? Why was X changed? I'm new, where should I start?"></textarea>
+        <textarea id="ask-input" rows="2" placeholder="Who has worked on the query planner? Why was X changed? I'm new, where should I start?"></textarea>
         <button id="ask-go" type="submit">Ask</button>
       </form>
       <div class="chips" id="suggestions"></div>
@@ -60,12 +60,12 @@
     </section>
 
     <section class="panel" data-panel="experts" hidden>
-      <p class="hint">Areas of the code by how much changed in them, and the people who know each best. Merged PRs count most, then reviews, then comments; recent work counts more.</p>
+      <p class="hint">Areas of the code by how much changed in them, and the people with the most public activity in each. Merged PRs count most, then reviews, then comments; recent work counts more.</p>
       <div id="experts-out"></div>
     </section>
 
     <section class="panel" data-panel="triage" hidden>
-      <p class="hint">Pick an open issue: Lore finds related past work and who knows that part of the code, and drafts a first reply. Nothing is posted anywhere.</p>
+      <p class="hint">Pick an open issue: Lore finds related past work and who has worked on that part of the code, and drafts a first reply for you to edit. Nothing is posted anywhere, and the draft makes no promises for you or the project.</p>
       <form id="triage-form" class="triage-form">
         <select id="triage-select" aria-label="Open issue"></select>
         <button id="triage-go" type="submit">Triage</button>
@@ -74,12 +74,12 @@
     </section>
 
     <section class="panel" data-panel="risk" hidden>
-      <p class="hint" id="risk-hint">Areas with at least 3 merged PRs in the last six months that at most one active person knows well. If that person leaves, nobody else does.</p>
+      <p class="hint" id="risk-hint">Areas with at least 3 merged PRs in the last six months where at most one active person has much public activity. Each row shows the PRs and everyone on them. Few people in an area's history doesn't mean nobody else understands it.</p>
       <div id="risk-out"></div>
     </section>
   </main>
 
-  <footer class="foot">Reads public GitHub data only, from your browser. Keeps GitHub logins, never emails or names. Answers use your Anna model. Lore 0.1.1</footer>
+  <footer class="foot">Reads public GitHub data only, from your browser. Keeps GitHub logins, never emails or names. Answers use your Anna model. Lore 0.1.2</footer>
 
   <script type="module" src="./app.js"></script>
 </body>

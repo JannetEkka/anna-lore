@@ -1,0 +1,39 @@
+ok: summary shows the loaded history
+ok: the 30-PR cap is stated as partial data
+ok: a load that wasn't rate limited doesn't blame the rate limit
+ok: answer links people
+ok: answer links grouped citations and drops the brackets
+ok: under the hood shows two tool calls
+ok: triage shows related work
+ok: a second load uses the stored copy
+ok: snapshot and recent list were stored
+ok: bad input shows an error
+ok: rate-limited: the summary says how much was read and when GitHub resets
+ok: rate-limited: Experts carries the banner inside the results
+ok: rate-limited: every Experts row has a partial-data badge
+ok: rate-limited: the Experts list is watermarked
+FAIL: rate-limited: Knowledge risk carries the banner inside the results
+FAIL: rate-limited: each of the 2 risk rows has a badge and says what the history can't show
+FAIL: rate-limited: the Knowledge risk hint says unfetched work is missing
+ok: rate-limited: the model's prompt says the data is partial
+ok: rate-limited: each tool result repeats it
+ok: rate-limited: the answer carries the banner
+ok: rate-limited: an answer that overstates is flagged, and its hedged sentence is not
+ok: rate-limited: Triage carries the banner
+ok: rate-limited: the triage prompt says the data is partial
+FAIL: a draft that still promises after the rewrite request gets a 'Before you post' note quoting both promises
+ok: complete load: no partial-data banner
+FAIL: complete load: the summary says Lore shows who worked on what, not who understands it
+FAIL: complete load: the model's prompt carries the evidence rules
+FAIL: finding 1: Lore asks the model to restate the overclaim
+FAIL: finding 1: the answer shown says what the PRs show
+ok: complete load: Knowledge risk lists 2 areas
+FAIL: finding 2: no row says 'only @x knows it'; each says what the history can't show
+FAIL: finding 2: each row shows its 3 PRs as links, with the count and dates
+FAIL: finding 2: each row names everyone active on those PRs
+FAIL: complete load: People by area says what each person did, in distinct PRs
+FAIL: finding 3: the triage prompt forbids promises and doesn't ask for a maintainer's voice
+FAIL: finding 3: Lore asks the model to remove the promises
+FAIL: finding 3: the draft shown makes no promise
+FAIL: finding 3: the draft is labelled as the user's to edit
+ok: no page errors
